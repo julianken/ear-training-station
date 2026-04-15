@@ -1,0 +1,404 @@
+<h2>Home / dashboard</h2>
+<p class="subtitle">Landing screen each day. Three philosophies for how much to show at once.</p>
+
+<style>
+  .dash-card { padding: 0 !important; overflow: hidden; background: #0a0a0a; }
+  .dash-card .card-image { padding: 0; height: 620px; background: #0a0a0a; }
+  .dash-card .card-body { background: #1a1a1a; color: #fafafa; }
+  .dash-card .card-body h3 { color: #fafafa; }
+  .dash-card .card-body p { color: #a3a3a3; }
+
+  .screen {
+    width: 100%; height: 100%;
+    background: #0a0a0a; color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    padding: 16px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .accent { color: #22d3ee; }
+  .muted { color: #737373; }
+  .chip { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #737373; font-weight: 600; }
+  .label { font-size: 9px; color: #737373; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+  .card-z {
+    background: #0f0f0f; border: 1px solid #171717; border-radius: 10px;
+    padding: 12px; box-sizing: border-box;
+  }
+  .header-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+  .brand { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+  .brand .dot { color: #22d3ee; }
+  .stat-chips { display: flex; gap: 8px; }
+  .stat-chip {
+    background: #0f0f0f; border: 1px solid #171717; border-radius: 6px;
+    padding: 5px 9px; font-size: 10px; color: #a3a3a3; font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stat-chip .num { color: #fbbf24; font-size: 11px; font-family: ui-monospace, monospace; }
+  .stat-chip .num.green { color: #22c55e; }
+
+  /* Degree mastery bars */
+  .deg-grid { display: flex; flex-direction: column; gap: 6px; }
+  .deg-row { display: grid; grid-template-columns: 24px 1fr 40px; align-items: center; gap: 10px; }
+  .deg-num { font-size: 16px; font-weight: 800; color: #fafafa; font-family: ui-monospace, monospace; }
+  .deg-num.weak { color: #ef4444; }
+  .deg-num.med { color: #fbbf24; }
+  .deg-num.strong { color: #22c55e; }
+  .deg-bar { height: 8px; background: #171717; border-radius: 4px; overflow: hidden; position: relative; }
+  .deg-bar > span { display: block; height: 100%; border-radius: 4px; }
+  .deg-bar .mast { background: #22c55e; }
+  .deg-bar .learn { background: #fbbf24; }
+  .deg-bar .miss { background: #ef4444; }
+  .deg-pct { font-size: 11px; color: #a3a3a3; font-family: ui-monospace, monospace; font-weight: 600; text-align: right; }
+
+  /* Big start button */
+  .start-btn {
+    background: linear-gradient(180deg, #22d3ee, #0891b2);
+    color: #0a0a0a; padding: 18px; border-radius: 12px; text-align: center;
+    font-size: 14px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+    position: relative;
+  }
+  .start-btn .sub { display: block; margin-top: 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; opacity: 0.7; text-transform: uppercase; }
+
+  /* ============ V1 Focused ============ */
+  .v1 .hero {
+    margin-bottom: 14px;
+  }
+  .v1 .hero-sub {
+    font-size: 11px; color: #a3a3a3; margin-top: 8px; letter-spacing: 0.04em;
+  }
+  .v1 .hero-sub .w { color: #fbbf24; font-weight: 700; }
+
+  .v1-module-title { font-size: 10px; color: #737373; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; margin-bottom: 10px; }
+  .v1-module { margin-top: 14px; }
+
+  /* ============ V2 Cockpit ============ */
+  .v2-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+    flex: 1;
+    grid-template-rows: auto auto auto;
+  }
+  .v2-card { padding: 10px; }
+  .v2-title { font-size: 9px; color: #737373; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+
+  .key-heat { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+  .key-cell {
+    aspect-ratio: 1; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; font-family: ui-monospace, monospace;
+    background: #171717; color: #525252; border: 1px solid #262626;
+  }
+  .key-cell.m1 { background: #1a1509; color: #fbbf24; border-color: #fbbf2433; }
+  .key-cell.m2 { background: #2a1f0d; color: #fbbf24; border-color: #fbbf2466; }
+  .key-cell.m3 { background: #0a2e1a; color: #22c55e; border-color: #22c55e66; }
+  .key-cell.locked { opacity: 0.25; }
+
+  .leitner-row { display: flex; gap: 6px; }
+  .lbox {
+    flex: 1; background: #171717; border: 1px solid #262626; border-radius: 6px;
+    padding: 8px 6px; text-align: center;
+  }
+  .lbox .lnum { font-size: 18px; font-weight: 800; font-family: ui-monospace, monospace; }
+  .lbox .llbl { font-size: 8px; color: #737373; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; margin-top: 2px; }
+  .lbox.new .lnum { color: #a3a3a3; }
+  .lbox.learn .lnum { color: #fbbf24; }
+  .lbox.review .lnum { color: #22d3ee; }
+  .lbox.master .lnum { color: #22c55e; }
+
+  .v2-start {
+    grid-column: span 2;
+  }
+
+  /* ============ V3 Journal ============ */
+  .v3-feed { flex: 1; display: flex; flex-direction: column; gap: 6px; margin-top: 12px; overflow: hidden; }
+  .session-card { padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
+  .session-date { font-size: 9px; color: #737373; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; min-width: 50px; font-family: ui-monospace, monospace; }
+  .session-content { flex: 1; }
+  .session-summary { font-size: 11px; color: #fafafa; }
+  .session-summary .hl { color: #22d3ee; font-weight: 700; }
+  .session-delta { font-size: 9px; color: #737373; letter-spacing: 0.12em; margin-top: 2px; }
+  .delta-pos { color: #22c55e; }
+  .delta-neg { color: #ef4444; }
+  .session-mini {
+    width: 40px; height: 24px;
+  }
+  .session-mini svg { width: 100%; height: 100%; }
+
+  .streak-flame {
+    display: inline-flex; align-items: center; gap: 3px;
+    color: #fbbf24;
+  }
+</style>
+
+<div class="cards">
+
+  <!-- V1 Focused -->
+  <div class="card dash-card" data-choice="v1" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen v1">
+        <div class="header-row">
+          <div class="brand">Eartrain<span class="dot">.</span></div>
+          <div class="stat-chips">
+            <div class="stat-chip"><span class="streak-flame">◆</span> <span class="num">6</span> day streak</div>
+          </div>
+        </div>
+
+        <div class="hero card-z" style="padding: 0; background: transparent; border: none;">
+          <div class="start-btn">
+            Start today's session
+            <span class="sub">~10 min · 30 items · resume from yesterday</span>
+          </div>
+          <div class="hero-sub">Focus today: <span class="w">6 in minor keys</span>, <span class="w">♭7 in A major</span></div>
+        </div>
+
+        <div class="v1-module">
+          <div class="v1-module-title">Scale-degree mastery · major keys</div>
+          <div class="card-z">
+            <div class="deg-grid">
+              <div class="deg-row">
+                <div class="deg-num strong">1</div>
+                <div class="deg-bar"><span class="mast" style="width:92%"></span></div>
+                <div class="deg-pct">92%</div>
+              </div>
+              <div class="deg-row">
+                <div class="deg-num strong">2</div>
+                <div class="deg-bar"><span class="mast" style="width:84%"></span></div>
+                <div class="deg-pct">84%</div>
+              </div>
+              <div class="deg-row">
+                <div class="deg-num strong">3</div>
+                <div class="deg-bar"><span class="mast" style="width:88%"></span></div>
+                <div class="deg-pct">88%</div>
+              </div>
+              <div class="deg-row">
+                <div class="deg-num med">4</div>
+                <div class="deg-bar"><span class="learn" style="width:71%"></span></div>
+                <div class="deg-pct">71%</div>
+              </div>
+              <div class="deg-row">
+                <div class="deg-num strong">5</div>
+                <div class="deg-bar"><span class="mast" style="width:95%"></span></div>
+                <div class="deg-pct">95%</div>
+              </div>
+              <div class="deg-row">
+                <div class="deg-num weak">6</div>
+                <div class="deg-bar"><span class="miss" style="width:48%"></span></div>
+                <div class="deg-pct">48%</div>
+              </div>
+              <div class="deg-row">
+                <div class="deg-num weak">7</div>
+                <div class="deg-bar"><span class="miss" style="width:52%"></span></div>
+                <div class="deg-pct">52%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: auto; padding-top: 12px; display: flex; gap: 8px;">
+          <div class="stat-chip"><span class="num">84</span> items in review</div>
+          <div class="stat-chip"><span class="num green">12</span> mastered</div>
+          <div class="stat-chip"><span class="muted">Last:</span> <span class="num">yesterday, 11 min</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>V1 · Focused</h3>
+      <p>One big CTA, one primary module (degree mastery bars), small chips below. Clear priorities; easy to come back to each day without cognitive load.</p>
+    </div>
+  </div>
+
+  <!-- V2 Cockpit -->
+  <div class="card dash-card" data-choice="v2" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen v2">
+        <div class="header-row">
+          <div class="brand">Eartrain<span class="dot">.</span></div>
+          <div class="stat-chips">
+            <div class="stat-chip">◆ <span class="num">6</span> day streak</div>
+            <div class="stat-chip"><span class="num">2h 14m</span> total</div>
+          </div>
+        </div>
+
+        <div class="v2-grid">
+          <div class="card-z v2-card">
+            <div class="v2-title">Scale degrees</div>
+            <div class="deg-grid" style="gap: 4px;">
+              <div class="deg-row" style="grid-template-columns: 20px 1fr 30px;">
+                <div class="deg-num strong" style="font-size: 13px;">1</div>
+                <div class="deg-bar" style="height: 5px;"><span class="mast" style="width:92%"></span></div>
+                <div class="deg-pct" style="font-size: 9px;">92</div>
+              </div>
+              <div class="deg-row" style="grid-template-columns: 20px 1fr 30px;">
+                <div class="deg-num strong" style="font-size: 13px;">2</div>
+                <div class="deg-bar" style="height: 5px;"><span class="mast" style="width:84%"></span></div>
+                <div class="deg-pct" style="font-size: 9px;">84</div>
+              </div>
+              <div class="deg-row" style="grid-template-columns: 20px 1fr 30px;">
+                <div class="deg-num strong" style="font-size: 13px;">3</div>
+                <div class="deg-bar" style="height: 5px;"><span class="mast" style="width:88%"></span></div>
+                <div class="deg-pct" style="font-size: 9px;">88</div>
+              </div>
+              <div class="deg-row" style="grid-template-columns: 20px 1fr 30px;">
+                <div class="deg-num med" style="font-size: 13px;">4</div>
+                <div class="deg-bar" style="height: 5px;"><span class="learn" style="width:71%"></span></div>
+                <div class="deg-pct" style="font-size: 9px;">71</div>
+              </div>
+              <div class="deg-row" style="grid-template-columns: 20px 1fr 30px;">
+                <div class="deg-num strong" style="font-size: 13px;">5</div>
+                <div class="deg-bar" style="height: 5px;"><span class="mast" style="width:95%"></span></div>
+                <div class="deg-pct" style="font-size: 9px;">95</div>
+              </div>
+              <div class="deg-row" style="grid-template-columns: 20px 1fr 30px;">
+                <div class="deg-num weak" style="font-size: 13px;">6</div>
+                <div class="deg-bar" style="height: 5px;"><span class="miss" style="width:48%"></span></div>
+                <div class="deg-pct" style="font-size: 9px;">48</div>
+              </div>
+              <div class="deg-row" style="grid-template-columns: 20px 1fr 30px;">
+                <div class="deg-num weak" style="font-size: 13px;">7</div>
+                <div class="deg-bar" style="height: 5px;"><span class="miss" style="width:52%"></span></div>
+                <div class="deg-pct" style="font-size: 9px;">52</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-z v2-card">
+            <div class="v2-title">Keys · major</div>
+            <div class="key-heat">
+              <div class="key-cell m3">C</div>
+              <div class="key-cell m3">G</div>
+              <div class="key-cell m2">D</div>
+              <div class="key-cell m2">A</div>
+              <div class="key-cell m1">E</div>
+              <div class="key-cell m1">B</div>
+              <div class="key-cell locked">F♯</div>
+              <div class="key-cell locked">D♭</div>
+              <div class="key-cell m1">F</div>
+              <div class="key-cell m1">B♭</div>
+              <div class="key-cell locked">E♭</div>
+              <div class="key-cell locked">A♭</div>
+            </div>
+            <div style="font-size: 9px; color: #525252; margin-top: 8px; letter-spacing: 0.1em;">6 active · 6 locked</div>
+          </div>
+
+          <div class="card-z v2-card" style="grid-column: span 2;">
+            <div class="v2-title">Spaced review pipeline</div>
+            <div class="leitner-row">
+              <div class="lbox new"><div class="lnum">14</div><div class="llbl">New</div></div>
+              <div class="lbox learn"><div class="lnum">32</div><div class="llbl">Learning</div></div>
+              <div class="lbox review"><div class="lnum">41</div><div class="llbl">Reviewing</div></div>
+              <div class="lbox master"><div class="lnum">12</div><div class="llbl">Mastered</div></div>
+            </div>
+          </div>
+
+          <div class="v2-start">
+            <div class="start-btn">
+              Start session · 30 items
+              <span class="sub">Focus: <span style="color: #0a0a0a; font-weight: 800;">6 in minor, ♭7 in A</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>V2 · Cockpit</h3>
+      <p>Everything at once: degree bars, key heatmap, Leitner pipeline, start CTA. Dense; rewards engaged users. Could feel overwhelming on first open.</p>
+    </div>
+  </div>
+
+  <!-- V3 Journal -->
+  <div class="card dash-card" data-choice="v3" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen v3">
+        <div class="header-row">
+          <div class="brand">Eartrain<span class="dot">.</span></div>
+          <div class="stat-chips">
+            <div class="stat-chip">◆ <span class="num">6</span> day streak</div>
+          </div>
+        </div>
+
+        <div class="start-btn">
+          Start session · 10 min
+          <span class="sub">Continue from yesterday</span>
+        </div>
+
+        <div class="v3-feed">
+          <div class="label" style="margin-top: 4px;">Recent sessions</div>
+
+          <div class="card-z session-card">
+            <div class="session-date">Today</div>
+            <div class="session-content">
+              <div class="session-summary">Ready. Focus: <span class="hl">6 in minor</span>.</div>
+              <div class="session-delta muted">84 items due for review</div>
+            </div>
+            <div class="session-mini">
+              <svg viewBox="0 0 40 24" preserveAspectRatio="none">
+                <circle cx="20" cy="12" r="4" fill="#22d3ee" opacity="0.3" />
+                <circle cx="20" cy="12" r="2" fill="#22d3ee" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-z session-card">
+            <div class="session-date">Yest.</div>
+            <div class="session-content">
+              <div class="session-summary">28 items · pitch 71% · label 94%</div>
+              <div class="session-delta"><span class="delta-pos">+4%</span> on degree 4 · <span class="delta-neg">-2%</span> on degree 6</div>
+            </div>
+            <div class="session-mini">
+              <svg viewBox="0 0 40 24" preserveAspectRatio="none">
+                <polyline points="0,18 8,16 16,14 24,10 32,8 40,6" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-z session-card">
+            <div class="session-date">Apr 12</div>
+            <div class="session-content">
+              <div class="session-summary">30 items · pitch 68% · label 90%</div>
+              <div class="session-delta"><span class="delta-pos">+6%</span> on degree 2 · unlocked key of G</div>
+            </div>
+            <div class="session-mini">
+              <svg viewBox="0 0 40 24" preserveAspectRatio="none">
+                <polyline points="0,20 8,18 16,12 24,14 32,10 40,8" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-z session-card">
+            <div class="session-date">Apr 11</div>
+            <div class="session-content">
+              <div class="session-summary">26 items · pitch 62% · label 88%</div>
+              <div class="session-delta"><span class="delta-neg">-3%</span> on degree 7 · <span class="delta-pos">+2%</span> on degree 3</div>
+            </div>
+            <div class="session-mini">
+              <svg viewBox="0 0 40 24" preserveAspectRatio="none">
+                <polyline points="0,14 8,16 16,12 24,18 32,14 40,12" fill="none" stroke="#fbbf24" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-z session-card">
+            <div class="session-date">Apr 10</div>
+            <div class="session-content">
+              <div class="session-summary">32 items · pitch 59% · label 85%</div>
+              <div class="session-delta">First session in key of D</div>
+            </div>
+            <div class="session-mini">
+              <svg viewBox="0 0 40 24" preserveAspectRatio="none">
+                <polyline points="0,12 8,14 16,16 24,12 32,14 40,10" fill="none" stroke="#a3a3a3" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>V3 · Journal</h3>
+      <p>Chronological feed. Today at top, past sessions below with small trend sparklines. Feels like a practice diary; emphasizes continuity and deltas over absolute mastery.</p>
+    </div>
+  </div>
+
+</div>

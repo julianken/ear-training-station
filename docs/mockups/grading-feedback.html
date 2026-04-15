@@ -1,0 +1,349 @@
+<h2>Feedback state after you sing</h2>
+<p class="subtitle">Same screen, three ways to show the result. Each balances speed vs. depth of learning feedback.</p>
+
+<style>
+  .fb-card { padding: 0 !important; overflow: hidden; background: #0a0a0a; }
+  .fb-card .card-image { padding: 0; height: 540px; background: #0a0a0a; }
+  .fb-card .card-body { background: #1a1a1a; color: #fafafa; }
+  .fb-card .card-body h3 { color: #fafafa; }
+  .fb-card .card-body p { color: #a3a3a3; }
+
+  .screen {
+    width: 100%; height: 100%;
+    background: #0a0a0a; color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    padding: 12px 14px;
+    box-sizing: border-box;
+  }
+  .top-bar { display: flex; justify-content: space-between; align-items: center; }
+  .chip { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #737373; font-weight: 600; }
+  .accent { color: #22d3ee; }
+  .prog { height: 2px; background: #171717; border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .prog > span { display: block; height: 100%; background: #22d3ee; width: 42%; }
+  .stage-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+  .stage-graded-ok { color: #22c55e; }
+  .stage-graded-miss { color: #ef4444; }
+
+  .zone {
+    background: #0f0f0f; border-radius: 10px; border: 1px solid #171717;
+    padding: 10px; box-sizing: border-box; position: relative;
+  }
+
+  /* Top zone shared (target 5) */
+  .top-zone { display: flex; flex-direction: column; margin-top: 8px; gap: 8px; padding-bottom: 10px; }
+  .cad-row { display: flex; gap: 3px; }
+  .chord {
+    flex:1; height: 28px; background:#171717; border:1px solid #262626; border-radius:5px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Times New Roman', serif; font-style: italic;
+    font-size: 13px; color: #22d3ee; background:#0c2430; border-color:#22d3ee33;
+  }
+  .target-row { display:flex; align-items:center; justify-content:center; gap: 14px; flex:1; }
+  .target-big { font-size: 70px; font-weight: 800; letter-spacing:-0.05em; line-height: 1; }
+  .target-meta { display:flex; flex-direction:column; }
+  .target-meta .lbl { font-size: 9px; color:#737373; letter-spacing:0.18em; text-transform:uppercase; font-weight:600; }
+  .target-meta .val { font-size: 11px; color:#a3a3a3; margin-top: 2px; }
+
+  /* Pitch graph */
+  .graph {
+    position: relative; height: 200px;
+    border-radius: 6px; border: 1px solid #171717; overflow: hidden;
+  }
+  .graph.ok { background: #06130caa; border-color: #22c55e44; box-shadow: inset 0 0 40px #22c55e11; }
+  .graph.miss { background: #13060aaa; border-color: #ef444444; box-shadow: inset 0 0 40px #ef444411; }
+  .axis-y {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 22px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 4px 0; font-size: 8px; color: #525252; font-weight: 700; align-items: center;
+  }
+  .axis-y span.target { color: #22d3ee; }
+  .axis-y span.sung { color: #fbbf24; }
+  .plot { position: absolute; left: 22px; right: 0; top: 0; bottom: 0; }
+  .target-band {
+    position: absolute; left: 0; right: 0; top: 28%; height: 16px;
+    background: linear-gradient(180deg, transparent, #22d3ee22, transparent);
+    border-top: 1px dashed #22d3ee; border-bottom: 1px dashed #22d3ee;
+  }
+  .target-band.ok-flash {
+    background: linear-gradient(180deg, transparent, #22c55e44, transparent);
+    border-color: #22c55e;
+  }
+  .target-band.miss-flash {
+    background: linear-gradient(180deg, transparent, #ef444444, transparent);
+    border-color: #ef4444;
+  }
+  .target-line {
+    position: absolute; left: 0; right: 0; top: calc(28% + 8px); height: 1px; background: #22d3ee;
+  }
+  .target-label { position: absolute; right: 6px; top: calc(28% + 2px); font-size: 10px; color: #22d3ee; font-weight: 700; }
+  .sung-label { position: absolute; right: 6px; font-size: 10px; color: #fbbf24; font-weight: 700; }
+
+  .tap-pad { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top: 8px; }
+  .tap-key { height: 28px; background:#171717; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#a3a3a3; font-weight:600; border:1px solid #262626; }
+  .tap-key.hit { background: #0a2e1a; color: #22c55e; border-color: #22c55e; }
+  .tap-key.miss { background: #2e0a0a; color: #ef4444; border-color: #ef4444; }
+
+  .bot-label-row { display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px; }
+  .readouts { display: flex; gap: 12px; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: #737373; font-weight: 600; }
+  .readouts .val-ok { color: #22c55e; font-weight: 700; }
+  .readouts .val-miss { color: #ef4444; font-weight: 700; }
+
+  /* =========== F1 Minimal flash =========== */
+  /* target band flashes, tiny check appears, auto-advance */
+  .f1-check {
+    position: absolute; top: 10px; right: 10px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #22c55e; color: #0a0a0a;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800;
+  }
+  .f1-auto { font-size: 9px; color: #525252; letter-spacing: 0.18em; text-transform: uppercase; font-weight:600; text-align:center; margin-top: 10px; }
+
+  /* =========== F2 Informative panel =========== */
+  .f2-result-panel {
+    background: #0a0a0a; border-radius: 6px; border: 1px solid #171717;
+    padding: 12px; margin-top: 8px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .f2-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: #a3a3a3;
+  }
+  .f2-row .tick { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+  .f2-row .tick.ok { background: #22c55e; color: #0a0a0a; }
+  .f2-row .tick.x { background: #ef4444; color: #0a0a0a; }
+  .f2-row .lbl { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #737373; font-weight: 700; }
+  .f2-row .detail { font-size: 10px; color: #a3a3a3; }
+  .f2-answer { grid-column: span 2; padding-top: 6px; border-top: 1px solid #171717; font-size: 11px; color: #a3a3a3; letter-spacing: 0.05em; }
+  .f2-answer .big { color: #22d3ee; font-weight: 700; font-size: 13px; }
+  .f2-continue {
+    margin-top: 8px; text-align: center;
+    font-size: 10px; color: #525252; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+  }
+  .f2-continue .key { background: #171717; border: 1px solid #262626; padding: 2px 6px; border-radius: 4px; color: #a3a3a3; font-family: ui-monospace, monospace; }
+
+  /* =========== F3 Post-mortem replay =========== */
+  .f3-replay-bar {
+    display: flex; gap: 8px; margin-top: 8px;
+    background: #0a0a0a; border-radius: 6px; border: 1px solid #171717; padding: 10px;
+    align-items: center;
+  }
+  .f3-play-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #22d3ee; color: #0a0a0a;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .f3-replay-opts { display: flex; flex-direction: column; gap: 4px; flex: 1; font-size: 10px; }
+  .f3-opt { display:flex; align-items:center; gap: 8px; color: #a3a3a3; }
+  .f3-opt .sw { width: 8px; height: 8px; border-radius: 50%; }
+  .f3-opt .sw.target { background: #22d3ee; }
+  .f3-opt .sw.sung { background: #fbbf24; }
+  .f3-sum { font-size: 10px; color: #737373; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .f3-sum .val-ok { color: #22c55e; }
+  .f3-sum .val-miss { color: #ef4444; }
+  .f3-next-btn {
+    width: 100%; background: #22d3ee; color: #0a0a0a;
+    padding: 10px; text-align: center; border-radius: 6px;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+    margin-top: 8px;
+  }
+</style>
+
+<div class="cards">
+
+  <!-- F1 Minimal flash -->
+  <div class="card fb-card" data-choice="f1" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+
+        <div class="zone top-zone" style="border-color:#171717;">
+          <div class="stage-label stage-graded-ok">Correct</div>
+          <div class="cad-row">
+            <div class="chord">I</div><div class="chord">IV</div><div class="chord">V</div><div class="chord">I</div>
+          </div>
+          <div class="target-row">
+            <div class="target-big" style="color:#22c55e;">5</div>
+            <div class="target-meta">
+              <div class="lbl">Target</div>
+              <div class="val">5 · "five" · G</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="zone" style="flex:1; margin-top:8px;">
+          <div class="bot-label-row">
+            <div class="stage-label stage-graded-ok">Result</div>
+            <div class="readouts"><span>CENTS <span class="val-ok">+8</span></span></div>
+          </div>
+          <div class="graph ok">
+            <div class="f1-check">✓</div>
+            <div class="axis-y">
+              <span>7</span><span>6</span><span class="target">5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+            <div class="plot">
+              <div class="target-band ok-flash"></div>
+              <div class="target-line"></div>
+              <div class="target-label">5 · target</div>
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;">
+                <polyline points="0,80 10,70 20,55 30,48 40,42 50,38 60,37 70,37 80,37 90,37 100,37"
+                  fill="none" stroke="#fbbf24" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+              </svg>
+            </div>
+          </div>
+          <div class="tap-pad">
+            <div class="tap-key">1</div><div class="tap-key">2</div><div class="tap-key">3</div>
+            <div class="tap-key">4</div><div class="tap-key hit">5</div><div class="tap-key">6</div>
+            <div class="tap-key">7</div>
+          </div>
+          <div class="f1-auto">Next · 1.2 s</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>F1 · Minimal flash</h3>
+      <p>Target band flashes green (or red), ✓ pops, tap-pad highlights your answer, auto-advance in ~1.2s. Fastest pace. Respects the user's flow; minimal explicit "lesson."</p>
+    </div>
+  </div>
+
+  <!-- F2 Informative panel -->
+  <div class="card fb-card" data-choice="f2" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+
+        <div class="zone top-zone" style="border-color:#171717;">
+          <div class="stage-label stage-graded-miss">Pitch off · label ok</div>
+          <div class="cad-row">
+            <div class="chord">I</div><div class="chord">IV</div><div class="chord">V</div><div class="chord">I</div>
+          </div>
+          <div class="target-row">
+            <div class="target-big" style="color:#22d3ee;">5</div>
+            <div class="target-meta">
+              <div class="lbl">Target</div>
+              <div class="val">5 · "five" · G</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="zone" style="flex:1; margin-top:8px;">
+          <div class="graph miss">
+            <div class="axis-y">
+              <span>7</span><span class="sung">6</span><span class="target">5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+            <div class="plot">
+              <div class="target-band miss-flash"></div>
+              <div class="target-line"></div>
+              <div class="target-label">5 · target</div>
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;">
+                <polyline points="0,75 10,60 20,40 30,28 40,22 50,20 60,19 70,20 80,21 90,20 100,19"
+                  fill="none" stroke="#fbbf24" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+              </svg>
+              <div style="position:absolute; top:19%; right:4px; width:8px; height:8px; background:#fbbf24; border-radius:50%; box-shadow: 0 0 10px #fbbf24;"></div>
+              <div class="sung-label" style="top: 14%;">YOU · 6</div>
+            </div>
+          </div>
+
+          <div class="f2-result-panel">
+            <div class="f2-row">
+              <div class="tick x">✗</div>
+              <div>
+                <div class="lbl">Pitch</div>
+                <div class="detail">Sang 6 · +108¢</div>
+              </div>
+            </div>
+            <div class="f2-row">
+              <div class="tick ok">✓</div>
+              <div>
+                <div class="lbl">Label</div>
+                <div class="detail">Said "five"</div>
+              </div>
+            </div>
+            <div class="f2-answer">Target was <span class="big">5 · G</span> — one scale degree higher than you sang.</div>
+          </div>
+
+          <div class="f2-continue"><span class="key">Space</span> next · <span class="key">R</span> replay target</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>F2 · Informative panel</h3>
+      <p>Separate ✓/✗ for pitch and label. Cents deviation shown. Correct answer stated plainly. Keyboard shortcut to continue. Teaching-forward; slower pace.</p>
+    </div>
+  </div>
+
+  <!-- F3 Post-mortem replay -->
+  <div class="card fb-card" data-choice="f3" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+
+        <div class="zone top-zone" style="border-color:#171717;">
+          <div class="stage-label stage-graded-miss">Review</div>
+          <div class="cad-row">
+            <div class="chord">I</div><div class="chord">IV</div><div class="chord">V</div><div class="chord">I</div>
+          </div>
+          <div class="target-row">
+            <div class="target-big" style="color:#22d3ee;">5</div>
+            <div class="target-meta">
+              <div class="lbl">Target</div>
+              <div class="val">5 · G</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="zone" style="flex:1; margin-top:8px;">
+          <div class="graph miss" style="height: 160px;">
+            <div class="axis-y">
+              <span>7</span><span class="sung">6</span><span class="target">5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+            <div class="plot">
+              <div class="target-band"></div>
+              <div class="target-line"></div>
+              <div class="target-label">5</div>
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;">
+                <polyline points="0,75 10,60 20,40 30,28 40,22 50,20 60,19 70,20 80,21 90,20 100,19"
+                  fill="none" stroke="#fbbf24" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+              </svg>
+              <div class="sung-label" style="top: 14%;">YOU · 6</div>
+            </div>
+          </div>
+
+          <div class="f3-replay-bar">
+            <div class="f3-play-btn">▶</div>
+            <div class="f3-replay-opts">
+              <div class="f3-opt"><div class="sw target"></div>Target · 5 (G)</div>
+              <div class="f3-opt"><div class="sw sung"></div>You · 6 (A)</div>
+            </div>
+            <div class="f3-sum">
+              <div>PITCH <span class="val-miss">✗</span></div>
+              <div>LABEL <span class="val-ok">✓</span></div>
+            </div>
+          </div>
+
+          <div class="f3-next-btn">Next item</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>F3 · Post-mortem replay</h3>
+      <p>On a miss: app offers to replay target and/or your sung note for A/B comparison. User hits "Next" when ready. Deepest learning loop; slowest. Could be opt-in (miss-only).</p>
+    </div>
+  </div>
+
+</div>

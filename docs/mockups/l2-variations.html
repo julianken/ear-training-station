@@ -1,0 +1,266 @@
+<h2>L2 variations — pick one (or mix elements)</h2>
+<p class="subtitle">All split-stage. Differ on how cadence is visualized, how mic feedback is shown, and how the number pad is weighted.</p>
+
+<style>
+  .lv-card { padding: 0 !important; overflow: hidden; background: #0a0a0a; }
+  .lv-card .card-image { padding: 0; height: 460px; background: #0a0a0a; }
+  .lv-card .card-body { background: #1a1a1a; color: #fafafa; }
+  .lv-card .card-body h3 { color: #fafafa; }
+  .lv-card .card-body p { color: #a3a3a3; }
+
+  .screen {
+    width: 100%; height: 100%;
+    background: #0a0a0a; color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    padding: 14px 16px;
+    box-sizing: border-box;
+  }
+  .top-bar { display: flex; justify-content: space-between; align-items: center; }
+  .chip { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #737373; font-weight: 600; }
+  .accent { color: #22d3ee; }
+  .prog { height: 2px; background: #171717; border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .prog > span { display: block; height: 100%; background: #22d3ee; width: 42%; }
+
+  .stage-label { font-size: 9px; color: #22d3ee; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+  .zone {
+    background: #0f0f0f; border-radius: 10px; border: 1px solid #171717;
+    padding: 12px; box-sizing: border-box; position: relative;
+  }
+  .zone.active { border-color: #22d3ee33; background: #0c1a20; }
+
+  /* ============ V1 baseline refined ============ */
+  .v1-top { flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-top:10px; }
+  .v1-tag { position: absolute; top: 10px; left: 12px; }
+  .v1-big { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height:1; }
+  .v1-note { font-size: 10px; color: #737373; letter-spacing: 0.15em; text-transform: uppercase; margin-top: 6px; }
+  .v1-bot { margin-top: 8px; }
+  .v1-mic { display:flex; align-items:center; gap: 8px; }
+  .v1-dot { width: 8px; height: 8px; border-radius:50%; background: #22d3ee; box-shadow: 0 0 8px #22d3ee; }
+  .v1-micLabel { font-size: 9px; color:#737373; letter-spacing: 0.14em; text-transform: uppercase; font-weight:600; }
+  .v1-wave { flex:1; display:flex; gap:2px; align-items:center; height:18px; }
+  .v1-wave div { flex:1; background:#22d3ee33; border-radius:1px; }
+  .v1-wave div.on { background:#22d3ee; }
+  .v1-pad { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top:10px; }
+  .v1-key { height: 30px; background:#171717; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#a3a3a3; font-weight:600; border:1px solid #262626; }
+
+  /* ============ V2 cadence-visible ============ */
+  .v2-cad { display:flex; gap:4px; margin-bottom: 10px; }
+  .v2-chord {
+    flex:1; height: 38px; background:#171717; border:1px solid #262626; border-radius:6px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family: 'Times New Roman', serif; font-style: italic;
+    font-size: 14px; color: #737373; gap: 1px;
+  }
+  .v2-chord.played { background:#0c2430; border-color:#22d3ee55; color:#22d3ee; }
+  .v2-chord.playing { background:#083344; border-color:#22d3ee; color:#22d3ee; box-shadow: 0 0 10px #22d3ee44; }
+  .v2-chord .sub { font-family: system-ui; font-style: normal; font-size: 8px; letter-spacing: 0.1em; color: inherit; opacity: 0.7; }
+  .v2-target { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; }
+  .v2-big { font-size: 84px; font-weight: 800; letter-spacing:-0.05em; line-height:1; }
+  .v2-note { font-size: 10px; color:#737373; letter-spacing: 0.15em; text-transform:uppercase; margin-top:6px; }
+  .v2-bot { margin-top:8px; }
+
+  /* ============ V3 pitch-targeted ============ */
+  .v3-top { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-top:10px; }
+  .v3-big { font-size: 88px; font-weight:800; letter-spacing:-0.05em; line-height:1; }
+  .v3-bot { margin-top: 8px; }
+  .v3-pitchbox { position: relative; height: 80px; background:#0a1519; border-radius:8px; border:1px solid #171717; margin-bottom: 8px; overflow: hidden; }
+  .v3-targetline { position:absolute; top:30%; left:0; right:0; height:1px; background:#22d3ee; }
+  .v3-targetline::after { content: "5"; position:absolute; right: 8px; top: -8px; font-size: 10px; color: #22d3ee; font-weight: 700; letter-spacing: 0.1em; }
+  .v3-sung { position:absolute; top: 38%; left: 0; width: 100%; height: 1px; background: #fbbf24; }
+  .v3-sung::after { content: ""; position: absolute; left: 60%; top: -4px; width: 8px; height: 8px; background: #fbbf24; border-radius: 50%; box-shadow: 0 0 10px #fbbf24; }
+  .v3-sung-label { position:absolute; right: 8px; top: 35%; font-size: 9px; color: #fbbf24; font-weight: 700; letter-spacing:0.1em; }
+  .v3-cents { position:absolute; left: 8px; top: 8px; font-size: 10px; color: #737373; letter-spacing: 0.12em; font-weight:600; }
+  .v3-cents .val { color: #fbbf24; }
+  .v3-pad { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+  .v3-key { height: 30px; background:#171717; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#a3a3a3; font-weight:600; border:1px solid #262626; }
+
+  /* ============ V4 big-tap mobile-first ============ */
+  .v4-top { padding: 10px 14px; }
+  .v4-big { font-size: 54px; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+  .v4-note { font-size: 9px; color:#737373; letter-spacing: 0.15em; text-transform:uppercase; margin-top: 4px; }
+  .v4-inline { display:flex; align-items:center; gap: 14px; }
+  .v4-wave { flex:1; display:flex; gap:2px; align-items:center; height: 28px; }
+  .v4-wave div { flex:1; background:#22d3ee33; border-radius:1px; }
+  .v4-wave div.on { background:#22d3ee; }
+  .v4-bot { flex:1; display:flex; flex-direction:column; margin-top: 8px; gap:6px; }
+  .v4-grid { flex:1; display:grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 6px; }
+  .v4-key {
+    background: #171717; border:1px solid #262626; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 800; color: #fafafa;
+  }
+  .v4-key.wide { grid-column: span 1; }
+  .v4-key.skip { background: transparent; border: none; }
+</style>
+
+<div class="cards">
+
+  <!-- V1 Clean baseline -->
+  <div class="card lv-card" data-choice="v1" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span> · PIANO</div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+        <div class="zone active v1-top" style="flex:1;">
+          <div class="v1-tag stage-label">Listening</div>
+          <div class="v1-big">5</div>
+          <div class="v1-note">Target played</div>
+        </div>
+        <div class="zone v1-bot">
+          <div class="v1-mic">
+            <div class="v1-dot"></div>
+            <div class="v1-micLabel">You</div>
+            <div class="v1-wave">
+              <div style="height:40%" class="on"></div><div style="height:70%" class="on"></div>
+              <div style="height:90%" class="on"></div><div style="height:60%" class="on"></div>
+              <div style="height:80%" class="on"></div><div style="height:50%"></div>
+              <div style="height:30%"></div><div style="height:60%"></div>
+              <div style="height:45%"></div><div style="height:75%"></div>
+              <div style="height:55%"></div><div style="height:40%"></div>
+            </div>
+          </div>
+          <div class="v1-pad">
+            <div class="v1-key">1</div><div class="v1-key">2</div><div class="v1-key">3</div>
+            <div class="v1-key">4</div><div class="v1-key">5</div><div class="v1-key">6</div>
+            <div class="v1-key">7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>V1 · Clean baseline</h3>
+      <p>Refined L2. Single target number, simple waveform, grid number-pad. Pure focus.</p>
+    </div>
+  </div>
+
+  <!-- V2 Cadence-visible -->
+  <div class="card lv-card" data-choice="v2" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+        <div class="zone active" style="flex:1; display:flex; flex-direction:column; margin-top:10px;">
+          <div class="stage-label">Listening</div>
+          <div class="v2-cad" style="margin-top: 8px;">
+            <div class="v2-chord played">I<div class="sub">C</div></div>
+            <div class="v2-chord played">IV<div class="sub">F</div></div>
+            <div class="v2-chord played">V<div class="sub">G</div></div>
+            <div class="v2-chord playing">I<div class="sub">C</div></div>
+          </div>
+          <div class="v2-target">
+            <div class="v2-big">5</div>
+            <div class="v2-note">Target</div>
+          </div>
+        </div>
+        <div class="zone v2-bot">
+          <div class="v1-mic">
+            <div class="v1-dot"></div>
+            <div class="v1-micLabel">You</div>
+            <div class="v1-wave">
+              <div style="height:40%" class="on"></div><div style="height:70%" class="on"></div>
+              <div style="height:90%" class="on"></div><div style="height:60%" class="on"></div>
+              <div style="height:80%"></div><div style="height:50%"></div>
+              <div style="height:30%"></div><div style="height:60%"></div>
+              <div style="height:45%"></div><div style="height:75%"></div>
+            </div>
+          </div>
+          <div class="v1-pad">
+            <div class="v1-key">1</div><div class="v1-key">2</div><div class="v1-key">3</div>
+            <div class="v1-key">4</div><div class="v1-key">5</div><div class="v1-key">6</div>
+            <div class="v1-key">7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>V2 · Cadence visible</h3>
+      <p>The I–IV–V–I cadence is shown as blocks as it plays. Teaches harmonic context — the user sees the key being established.</p>
+    </div>
+  </div>
+
+  <!-- V3 Pitch-targeted -->
+  <div class="card lv-card" data-choice="v3" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+        <div class="zone active v3-top">
+          <div class="v1-tag stage-label">Target</div>
+          <div class="v3-big">5</div>
+        </div>
+        <div class="zone v3-bot">
+          <div class="v3-pitchbox">
+            <div class="v3-cents">cents <span class="val">+18</span></div>
+            <div class="v3-targetline"></div>
+            <div class="v3-sung"></div>
+            <div class="v3-sung-label">YOU</div>
+          </div>
+          <div class="v3-pad">
+            <div class="v3-key">1</div><div class="v3-key">2</div><div class="v3-key">3</div>
+            <div class="v3-key">4</div><div class="v3-key">5</div><div class="v3-key">6</div>
+            <div class="v3-key">7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>V3 · Pitch graph</h3>
+      <p>Real-time pitch visualization: target line + live sung pitch dot + cents off. Singing feedback becomes tangible. Might be too tuner-y for some.</p>
+    </div>
+  </div>
+
+  <!-- V4 Big-tap mobile-first -->
+  <div class="card lv-card" data-choice="v4" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+        <div class="zone active" style="margin-top:10px; padding: 12px 16px;">
+          <div class="v4-inline">
+            <div>
+              <div class="v4-big">5</div>
+              <div class="v4-note">Target</div>
+            </div>
+            <div class="v4-wave">
+              <div style="height:30%" class="on"></div><div style="height:55%" class="on"></div>
+              <div style="height:80%" class="on"></div><div style="height:65%" class="on"></div>
+              <div style="height:45%" class="on"></div><div style="height:70%"></div>
+              <div style="height:50%"></div><div style="height:35%"></div>
+              <div style="height:60%"></div><div style="height:40%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="v4-bot">
+          <div class="v4-grid">
+            <div class="v4-key">1</div>
+            <div class="v4-key">2</div>
+            <div class="v4-key">3</div>
+            <div class="v4-key">4</div>
+            <div class="v4-key">5</div>
+            <div class="v4-key">6</div>
+            <div class="v4-key">7</div>
+            <div class="v4-key skip"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>V4 · Big-tap mobile-first</h3>
+      <p>Huge number-pad dominates. Thumb-friendly. Mic is a compact strip. Best if mobile is the primary form factor.</p>
+    </div>
+  </div>
+
+</div>

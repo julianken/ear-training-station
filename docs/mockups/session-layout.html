@@ -1,0 +1,226 @@
+<h2>Which session-screen layout feels right?</h2>
+<p class="subtitle">All dark-aesthetic. Each shows a different way of organizing the same loop. Click to select.</p>
+
+<style>
+  .layout-card { padding: 0 !important; overflow: hidden; background: #0a0a0a; }
+  .layout-card .card-image { padding: 0; height: 360px; background: #0a0a0a; display: flex; align-items: stretch; justify-content: stretch; }
+  .layout-card .card-body { background: #1a1a1a; color: #fafafa; }
+  .layout-card .card-body h3 { color: #fafafa; }
+  .layout-card .card-body p { color: #a3a3a3; }
+
+  .screen {
+    width: 100%; height: 100%;
+    background: #0a0a0a;
+    color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    padding: 14px 16px;
+    box-sizing: border-box;
+    position: relative;
+  }
+  .chip {
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #737373; font-weight: 600;
+  }
+  .accent { color: #22d3ee; }
+  .prog {
+    height: 2px; background: #171717; border-radius: 2px; overflow: hidden;
+    margin-top: 6px;
+  }
+  .prog > span { display: block; height: 100%; background: #22d3ee; width: 42%; }
+
+  /* Layout 1 — Centered minimal */
+  .l1-target {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .l1-big {
+    font-size: 120px; font-weight: 800; letter-spacing: -0.05em; line-height: 1;
+  }
+  .l1-big .dot { color: #22d3ee; }
+  .l1-hint { font-size: 11px; color: #737373; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 14px; }
+  .l1-mic {
+    display: flex; gap: 2px; align-items: center; height: 18px; margin-top: 12px;
+  }
+  .l1-mic div { width: 2px; background: #22d3ee; border-radius: 1px; }
+  .l1-pad {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    margin-top: 16px;
+  }
+  .l1-key {
+    aspect-ratio: 1; background: #171717; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #a3a3a3; font-weight: 600;
+    border: 1px solid #262626;
+  }
+  .l1-key.hot { background: #083344; color: #22d3ee; border-color: #22d3ee; }
+
+  /* Layout 2 — Split stage */
+  .l2-top {
+    flex: 1; background: #0f0f0f; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 1px solid #171717; position: relative;
+  }
+  .l2-stage { font-size: 9px; color: #22d3ee; letter-spacing: 0.2em; text-transform: uppercase; position: absolute; top: 10px; left: 12px; font-weight: 700; }
+  .l2-big { font-size: 96px; font-weight: 800; letter-spacing: -0.04em; }
+  .l2-note { font-size: 10px; color: #737373; letter-spacing: 0.15em; text-transform: uppercase; margin-top: 8px; }
+  .l2-bottom {
+    margin-top: 8px;
+    background: #0f0f0f; border-radius: 10px;
+    border: 1px solid #171717;
+    padding: 12px;
+  }
+  .l2-mic-row { display: flex; align-items: center; gap: 10px; }
+  .l2-mic-ind {
+    width: 10px; height: 10px; border-radius: 50%; background: #22d3ee;
+    box-shadow: 0 0 10px #22d3ee;
+  }
+  .l2-mic-label { font-size: 10px; color: #737373; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .l2-wave { flex: 1; display: flex; gap: 2px; align-items: center; height: 18px; }
+  .l2-wave div { flex: 1; background: #22d3ee33; border-radius: 1px; }
+  .l2-wave div.on { background: #22d3ee; }
+  .l2-pad {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 8px;
+  }
+  .l2-key {
+    height: 28px; background: #171717; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #a3a3a3; font-weight: 600;
+    border: 1px solid #262626;
+  }
+
+  /* Layout 3 — Conversational */
+  .l3-feed { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
+  .l3-round {
+    background: #0f0f0f; border-radius: 8px; padding: 8px 10px;
+    border: 1px solid #171717;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10px; color: #737373;
+  }
+  .l3-round.current {
+    background: #0c2430; border-color: #22d3ee;
+    padding: 14px; flex-direction: column; gap: 8px;
+  }
+  .l3-num { font-size: 14px; font-weight: 700; color: #fafafa; min-width: 20px; }
+  .l3-num.hit { color: #22c55e; }
+  .l3-num.miss { color: #ef4444; }
+  .l3-round.current .l3-big { font-size: 44px; font-weight: 800; color: #22d3ee; }
+  .l3-meta { flex: 1; }
+  .l3-check { color: #22c55e; font-weight: 700; }
+  .l3-x { color: #ef4444; font-weight: 700; }
+</style>
+
+<div class="cards">
+
+  <!-- Layout 1 — Centered minimal -->
+  <div class="card layout-card" data-choice="l1" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="chip">C <span class="accent">MAJOR</span> · PIANO</div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+        <div class="l1-target">
+          <div class="l1-big">5<span class="dot">.</span></div>
+          <div class="l1-hint">Sing & say</div>
+          <div class="l1-mic">
+            <div style="height:40%"></div><div style="height:70%"></div><div style="height:90%"></div>
+            <div style="height:60%"></div><div style="height:80%"></div><div style="height:50%"></div>
+            <div style="height:30%"></div><div style="height:60%"></div><div style="height:45%"></div>
+            <div style="height:75%"></div><div style="height:55%"></div><div style="height:40%"></div>
+          </div>
+        </div>
+        <div class="l1-pad">
+          <div class="l1-key">1</div><div class="l1-key">2</div><div class="l1-key">3</div>
+          <div class="l1-key">4</div><div class="l1-key hot">5</div><div class="l1-key">6</div>
+          <div class="l1-key">7</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>L1 · Centered minimal</h3>
+      <p>One focal number. Everything else subordinated. Tap-pad at bottom as backup input. Cleanest; matches the "one thing to pay attention to" philosophy.</p>
+    </div>
+  </div>
+
+  <!-- Layout 2 — Split stage -->
+  <div class="card layout-card" data-choice="l2" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+          <div class="l2-top">
+            <div class="l2-stage">Listening</div>
+            <div class="l2-big">5</div>
+            <div class="l2-note">Target played</div>
+          </div>
+          <div class="l2-bottom">
+            <div class="l2-mic-row">
+              <div class="l2-mic-ind"></div>
+              <div class="l2-mic-label">You</div>
+              <div class="l2-wave">
+                <div style="height:40%" class="on"></div><div style="height:70%" class="on"></div>
+                <div style="height:90%" class="on"></div><div style="height:60%" class="on"></div>
+                <div style="height:80%"></div><div style="height:50%"></div>
+                <div style="height:30%"></div><div style="height:60%"></div>
+                <div style="height:45%"></div><div style="height:75%"></div>
+              </div>
+            </div>
+            <div class="l2-pad">
+              <div class="l2-key">1</div><div class="l2-key">2</div><div class="l2-key">3</div>
+              <div class="l2-key">4</div><div class="l2-key">5</div><div class="l2-key">6</div>
+              <div class="l2-key">7</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>L2 · Split stage</h3>
+      <p>"Listening" and "You" as distinct zones. State transitions (Listening → Capturing → Graded) are clear. More scaffolded for beginners; slightly busier.</p>
+    </div>
+  </div>
+
+  <!-- Layout 3 — Conversational -->
+  <div class="card layout-card" data-choice="l3" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+        <div class="l3-feed">
+          <div class="l3-round">
+            <div class="l3-num hit">3</div>
+            <div class="l3-meta">sang 3 · said "three"</div>
+            <div class="l3-check">✓ ✓</div>
+          </div>
+          <div class="l3-round">
+            <div class="l3-num miss">7</div>
+            <div class="l3-meta">sang 7♭ · said "seven"</div>
+            <div class="l3-x">✗ ✓</div>
+          </div>
+          <div class="l3-round">
+            <div class="l3-num hit">1</div>
+            <div class="l3-meta">sang 1 · said "one"</div>
+            <div class="l3-check">✓ ✓</div>
+          </div>
+          <div class="l3-round current">
+            <div class="l3-big">5</div>
+            <div class="l3-meta" style="color:#22d3ee; letter-spacing:0.1em; text-transform:uppercase; font-size:10px;">Listening · sing it</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>L3 · Conversational / transcript</h3>
+      <p>Past rounds scroll above as a history. Current round active at bottom. Feels like a log; emphasizes progress-in-the-moment.</p>
+    </div>
+  </div>
+
+</div>

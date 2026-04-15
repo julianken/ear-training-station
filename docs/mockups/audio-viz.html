@@ -1,0 +1,383 @@
+<h2>Audio visualization during capture</h2>
+<p class="subtitle">All use L2's split-stage structure. Top is consistent. Bottom "You" zone differs — each emphasizes a different kind of real-time feedback.</p>
+
+<style>
+  .viz-card { padding: 0 !important; overflow: hidden; background: #0a0a0a; }
+  .viz-card .card-image { padding: 0; height: 520px; background: #0a0a0a; }
+  .viz-card .card-body { background: #1a1a1a; color: #fafafa; }
+  .viz-card .card-body h3 { color: #fafafa; }
+  .viz-card .card-body p { color: #a3a3a3; }
+
+  .screen {
+    width: 100%; height: 100%;
+    background: #0a0a0a; color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    padding: 12px 14px;
+    box-sizing: border-box;
+  }
+  .top-bar { display: flex; justify-content: space-between; align-items: center; }
+  .chip { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #737373; font-weight: 600; }
+  .accent { color: #22d3ee; }
+  .prog { height: 2px; background: #171717; border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .prog > span { display: block; height: 100%; background: #22d3ee; width: 42%; }
+  .stage-label { font-size: 9px; color: #22d3ee; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+  .stage-label.capturing { color: #fbbf24; }
+  .zone {
+    background: #0f0f0f; border-radius: 10px; border: 1px solid #171717;
+    padding: 10px; box-sizing: border-box; position: relative;
+  }
+  .zone.active-blue { border-color: #22d3ee33; background: #0c1a20; }
+  .zone.active-amber { border-color: #fbbf24aa; background: #1a1509; box-shadow: 0 0 20px #fbbf2422; }
+
+  /* Shared top */
+  .top-zone { display: flex; flex-direction: column; margin-top: 8px; gap: 8px; padding-bottom: 10px; }
+  .cad-row { display: flex; gap: 3px; }
+  .chord {
+    flex:1; height: 28px; background:#171717; border:1px solid #262626; border-radius:5px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Times New Roman', serif; font-style: italic;
+    font-size: 13px; color: #737373;
+  }
+  .chord.played { background:#0c2430; border-color:#22d3ee33; color:#22d3ee99; }
+  .chord.playing { background:#083344; border-color:#22d3ee; color:#22d3ee; }
+  .target-row { display:flex; align-items:center; justify-content:center; gap: 14px; flex:1; }
+  .target-big { font-size: 70px; font-weight: 800; letter-spacing:-0.05em; line-height: 1; }
+  .target-meta { display:flex; flex-direction:column; }
+  .target-meta .lbl { font-size: 9px; color:#737373; letter-spacing:0.18em; text-transform:uppercase; font-weight:600; }
+  .target-meta .val { font-size: 11px; color:#a3a3a3; margin-top: 2px; }
+
+  /* Bottom zone common */
+  .bot-label-row { display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px; }
+  .mic-pulse { display:flex; align-items:center; gap: 6px; }
+  .mic-dot { width: 8px; height: 8px; border-radius:50%; background: #fbbf24; box-shadow: 0 0 10px #fbbf24; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .readouts { display: flex; gap: 12px; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: #737373; font-weight: 600; }
+  .readouts .val { color: #fbbf24; font-weight: 700; }
+
+  .tap-pad { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top: 8px; }
+  .tap-key { height: 28px; background:#171717; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#a3a3a3; font-weight:600; border:1px solid #262626; }
+
+  /* ============ R1 Pitch trace ============ */
+  .r1-graph {
+    position: relative; height: 200px; background: #06101399;
+    border-radius: 6px; border: 1px solid #171717; overflow: hidden;
+  }
+  .r1-axis-y {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 22px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 4px 0; font-size: 8px; color: #525252; font-weight: 700; align-items: center;
+  }
+  .r1-axis-y span.hot { color: #22d3ee; }
+  .r1-plot { position: absolute; left: 22px; right: 0; top: 0; bottom: 0; }
+  .r1-target-band {
+    position: absolute; left: 0; right: 0; top: 28%; height: 16px;
+    background: linear-gradient(180deg, transparent, #22d3ee22, transparent);
+    border-top: 1px dashed #22d3ee; border-bottom: 1px dashed #22d3ee;
+  }
+  .r1-target-line {
+    position: absolute; left: 0; right: 0; top: calc(28% + 8px); height: 1px; background: #22d3ee;
+  }
+  .r1-target-label { position: absolute; right: 6px; top: calc(28% + 2px); font-size: 10px; color: #22d3ee; font-weight: 700; }
+  /* Pitch trace path — fake an SVG-like shape with clip-paths */
+  .r1-trace {
+    position: absolute; left: 0; width: 100%; height: 40px; top: calc(28% + 6px);
+  }
+  .r1-trace svg { width: 100%; height: 100%; }
+  .r1-now {
+    position: absolute; right: 4px; top: 30%; width: 10px; height: 10px;
+    background: #fbbf24; border-radius: 50%;
+    box-shadow: 0 0 16px #fbbf24, 0 0 4px #fff;
+  }
+  .r1-now-label { position: absolute; right: 18px; top: 28%; font-size: 9px; color: #fbbf24; font-weight:700; letter-spacing: 0.1em; }
+
+  /* ============ R2 Spectrum ============ */
+  .r2-wrap {
+    position: relative; height: 200px; background: #060f13aa;
+    border-radius: 6px; border: 1px solid #171717; overflow: hidden;
+    padding: 0 8px;
+    display: flex; align-items: flex-end; gap: 1px;
+  }
+  .r2-bar { flex: 1; border-radius: 1px 1px 0 0; }
+  .r2-target-marker {
+    position: absolute; top: 8px; bottom: 0; width: 2px; background: #22d3ee;
+    box-shadow: 0 0 12px #22d3ee;
+  }
+  .r2-target-marker::before {
+    content: "TARGET"; position: absolute; top: 0; left: 6px; font-size: 8px; color: #22d3ee; font-weight: 700; letter-spacing: 0.12em; white-space: nowrap;
+  }
+  .r2-scale-ladder {
+    display: flex; gap: 4px; margin-top: 10px; justify-content: center;
+  }
+  .r2-rung {
+    width: 32px; height: 32px; border-radius: 50%; background: #171717; border: 1px solid #262626;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #525252;
+  }
+  .r2-rung.active {
+    background: #1a1509; border-color: #fbbf24; color: #fbbf24;
+    box-shadow: 0 0 16px #fbbf2466;
+  }
+  .r2-rung.target {
+    background: #083344; border-color: #22d3ee; color: #22d3ee;
+  }
+
+  /* ============ R3 Piano-roll ============ */
+  .r3-roll {
+    position: relative; height: 200px; background: #0a0a0a; border-radius: 6px;
+    border: 1px solid #171717; overflow: hidden;
+  }
+  .r3-staff {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    background:
+      repeating-linear-gradient(to bottom,
+        transparent 0,
+        transparent 22px,
+        #1a1a1a 22px,
+        #1a1a1a 23px
+      );
+  }
+  .r3-degree-labels {
+    position: absolute; left: 4px; top: 0; bottom: 0; width: 18px;
+    display: flex; flex-direction: column-reverse; padding: 6px 0;
+    font-size: 8px; color: #525252; font-weight: 700;
+  }
+  .r3-degree-labels span { flex: 1; display: flex; align-items: center; }
+  .r3-target-block {
+    position: absolute; left: 28px; right: 6px; height: 20px;
+    /* position at degree 5 from bottom — 5 of 7, so top offset = (7-5)/7 * 100% */
+    top: 26%;
+    background: #22d3ee33; border: 1px solid #22d3ee;
+    border-radius: 3px;
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: 10px; color: #22d3ee; font-weight: 700; letter-spacing: 0.15em;
+  }
+  .r3-sung-block {
+    position: absolute; left: 70%; width: 25%; height: 22px;
+    top: 30%;
+    background: #fbbf2433; border: 1px solid #fbbf24;
+    border-radius: 3px;
+    box-shadow: 0 0 12px #fbbf2444;
+  }
+  .r3-playhead {
+    position: absolute; right: 6px; top: 6px; bottom: 6px; width: 2px; background: #fbbf24;
+    box-shadow: 0 0 8px #fbbf24;
+  }
+  .r3-time-axis { position: absolute; bottom: 3px; left: 28px; right: 6px; font-size: 8px; color: #525252; display: flex; justify-content: space-between; }
+</style>
+
+<div class="cards">
+
+  <!-- R1 Pitch trace -->
+  <div class="card viz-card" data-choice="r1" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+
+        <div class="zone active-blue top-zone">
+          <div class="stage-label">Listening</div>
+          <div class="cad-row">
+            <div class="chord played">I</div>
+            <div class="chord played">IV</div>
+            <div class="chord played">V</div>
+            <div class="chord playing">I</div>
+          </div>
+          <div class="target-row">
+            <div class="target-big">5</div>
+            <div class="target-meta">
+              <div class="lbl">Target</div>
+              <div class="val">5 · "five" · G</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="zone active-amber" style="flex:1; margin-top:8px;">
+          <div class="bot-label-row">
+            <div class="mic-pulse">
+              <div class="mic-dot"></div>
+              <div class="stage-label capturing">Capturing</div>
+            </div>
+            <div class="readouts">
+              <span>CENTS <span class="val">+18</span></span>
+              <span>HZ <span class="val">392</span></span>
+            </div>
+          </div>
+          <div class="r1-graph">
+            <div class="r1-axis-y">
+              <span>7</span><span>6</span><span class="hot">5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+            <div class="r1-plot">
+              <div class="r1-target-band"></div>
+              <div class="r1-target-line"></div>
+              <div class="r1-target-label">5 · target</div>
+              <div class="r1-trace">
+                <svg viewBox="0 0 100 20" preserveAspectRatio="none">
+                  <polyline points="0,18 5,16 10,14 15,12 20,10 25,6 30,5 35,6 40,8 45,7 50,6 55,5 60,4 65,3 70,4 75,6 80,6 85,4 90,3 95,2 100,3"
+                    fill="none" stroke="#fbbf24" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+                </svg>
+              </div>
+              <div class="r1-now"></div>
+              <div class="r1-now-label">YOU</div>
+            </div>
+          </div>
+          <div class="tap-pad">
+            <div class="tap-key">1</div><div class="tap-key">2</div><div class="tap-key">3</div>
+            <div class="tap-key">4</div><div class="tap-key">5</div><div class="tap-key">6</div>
+            <div class="tap-key">7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>R1 · Pitch trace over time</h3>
+      <p>Scrolling line graph: time (x) × scale degree (y). Target band highlighted. Your sung pitch draws a line. Amber dot = now. Cents & Hz readouts. Best for learning pitch stability.</p>
+    </div>
+  </div>
+
+  <!-- R2 Spectrum + scale-degree lock -->
+  <div class="card viz-card" data-choice="r2" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+
+        <div class="zone active-blue top-zone">
+          <div class="stage-label">Listening</div>
+          <div class="cad-row">
+            <div class="chord played">I</div>
+            <div class="chord played">IV</div>
+            <div class="chord played">V</div>
+            <div class="chord playing">I</div>
+          </div>
+          <div class="target-row">
+            <div class="target-big">5</div>
+            <div class="target-meta">
+              <div class="lbl">Target</div>
+              <div class="val">5 · "five" · G</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="zone active-amber" style="flex:1; margin-top:8px;">
+          <div class="bot-label-row">
+            <div class="mic-pulse">
+              <div class="mic-dot"></div>
+              <div class="stage-label capturing">Capturing</div>
+            </div>
+            <div class="readouts">
+              <span>CENTS <span class="val">+18</span></span>
+            </div>
+          </div>
+          <div class="r2-wrap">
+            <div class="r2-bar" style="height: 10%; background: #22d3ee33;"></div>
+            <div class="r2-bar" style="height: 15%; background: #22d3ee55;"></div>
+            <div class="r2-bar" style="height: 25%; background: #22d3ee77;"></div>
+            <div class="r2-bar" style="height: 45%; background: #22d3ee99;"></div>
+            <div class="r2-bar" style="height: 70%; background: #fbbf24;"></div>
+            <div class="r2-bar" style="height: 85%; background: #fbbf24;"></div>
+            <div class="r2-bar" style="height: 92%; background: #fbbf24;"></div>
+            <div class="r2-bar" style="height: 80%; background: #fbbf24;"></div>
+            <div class="r2-bar" style="height: 55%; background: #fbbf24cc;"></div>
+            <div class="r2-bar" style="height: 40%; background: #fbbf2499;"></div>
+            <div class="r2-bar" style="height: 30%; background: #22d3ee99;"></div>
+            <div class="r2-bar" style="height: 50%; background: #22d3ee77;"></div>
+            <div class="r2-bar" style="height: 25%; background: #22d3ee77;"></div>
+            <div class="r2-bar" style="height: 35%; background: #22d3ee55;"></div>
+            <div class="r2-bar" style="height: 18%; background: #22d3ee55;"></div>
+            <div class="r2-bar" style="height: 28%; background: #22d3ee77;"></div>
+            <div class="r2-bar" style="height: 20%; background: #22d3ee55;"></div>
+            <div class="r2-bar" style="height: 12%; background: #22d3ee33;"></div>
+            <div class="r2-bar" style="height: 18%; background: #22d3ee55;"></div>
+            <div class="r2-bar" style="height: 8%; background: #22d3ee33;"></div>
+            <div class="r2-target-marker" style="left: 36%;"></div>
+          </div>
+          <div class="r2-scale-ladder">
+            <div class="r2-rung">1</div>
+            <div class="r2-rung">2</div>
+            <div class="r2-rung">3</div>
+            <div class="r2-rung">4</div>
+            <div class="r2-rung target active">5</div>
+            <div class="r2-rung">6</div>
+            <div class="r2-rung">7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>R2 · FFT spectrum + degree lock</h3>
+      <p>Live frequency spectrum; amber bars = your voice, cyan = background. Target-frequency marker. Scale-degree "rung" lights up as your pitch settles. Audio-engineer aesthetic.</p>
+    </div>
+  </div>
+
+  <!-- R3 Piano-roll / staff -->
+  <div class="card viz-card" data-choice="r3" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="top-bar">
+          <div class="chip">C <span class="accent">MAJOR</span></div>
+          <div class="chip">12 / 30</div>
+        </div>
+        <div class="prog"><span></span></div>
+
+        <div class="zone active-blue top-zone">
+          <div class="stage-label">Listening</div>
+          <div class="cad-row">
+            <div class="chord played">I</div>
+            <div class="chord played">IV</div>
+            <div class="chord played">V</div>
+            <div class="chord playing">I</div>
+          </div>
+          <div class="target-row">
+            <div class="target-big">5</div>
+            <div class="target-meta">
+              <div class="lbl">Target</div>
+              <div class="val">5 · "five" · G</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="zone active-amber" style="flex:1; margin-top:8px;">
+          <div class="bot-label-row">
+            <div class="mic-pulse">
+              <div class="mic-dot"></div>
+              <div class="stage-label capturing">Capturing</div>
+            </div>
+            <div class="readouts">
+              <span>CENTS <span class="val">+18</span></span>
+              <span>HZ <span class="val">392</span></span>
+            </div>
+          </div>
+          <div class="r3-roll">
+            <div class="r3-staff"></div>
+            <div class="r3-degree-labels">
+              <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span>
+            </div>
+            <div class="r3-target-block">TARGET · 5</div>
+            <div class="r3-sung-block"></div>
+            <div class="r3-playhead"></div>
+            <div class="r3-time-axis">
+              <span>0s</span><span>1s</span><span>2s</span><span>3s</span>
+            </div>
+          </div>
+          <div class="tap-pad">
+            <div class="tap-key">1</div><div class="tap-key">2</div><div class="tap-key">3</div>
+            <div class="tap-key">4</div><div class="tap-key">5</div><div class="tap-key">6</div>
+            <div class="tap-key">7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>R3 · Piano-roll / horizontal</h3>
+      <p>DAW-style piano-roll. Target is a cyan block spanning time. Your sung note is an amber block — perfectly overlapped = perfect match. Playhead moves right. Most "musician-native."</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,394 @@
+<h2>Session summary — last screen each day</h2>
+<p class="subtitle">User just finished. What do they see? Three philosophies.</p>
+
+<style>
+  .sum-card { padding: 0 !important; overflow: hidden; background: #0a0a0a; }
+  .sum-card .card-image { padding: 0; height: 620px; background: #0a0a0a; }
+  .sum-card .card-body { background: #1a1a1a; color: #fafafa; }
+  .sum-card .card-body h3 { color: #fafafa; }
+  .sum-card .card-body p { color: #a3a3a3; }
+
+  .screen {
+    width: 100%; height: 100%;
+    background: #0a0a0a; color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    padding: 18px 16px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .accent { color: #22d3ee; }
+  .muted { color: #737373; }
+  .label { font-size: 9px; color: #737373; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+  .card-z {
+    background: #0f0f0f; border: 1px solid #171717; border-radius: 10px;
+    padding: 12px;
+  }
+
+  .done-hdr { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+  .done-title { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+  .done-title .dot { color: #22c55e; }
+  .done-meta { font-size: 10px; color: #737373; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+
+  .big-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .bigstat {
+    background: #0f0f0f; border: 1px solid #171717; border-radius: 10px;
+    padding: 12px; text-align: center;
+  }
+  .bigstat .num { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; font-family: ui-monospace, monospace; }
+  .bigstat .num.green { color: #22c55e; }
+  .bigstat .num.amber { color: #fbbf24; }
+  .bigstat .num.cyan { color: #22d3ee; }
+  .bigstat .lbl { font-size: 8px; color: #737373; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; margin-top: 2px; }
+  .bigstat .delta { font-size: 10px; margin-top: 4px; font-weight: 700; font-family: ui-monospace, monospace; }
+  .delta-pos { color: #22c55e; }
+  .delta-neg { color: #ef4444; }
+
+  /* Degree bars with deltas */
+  .deg-grid { display: flex; flex-direction: column; gap: 8px; }
+  .deg-row { display: grid; grid-template-columns: 24px 1fr 50px; align-items: center; gap: 10px; }
+  .deg-num { font-size: 16px; font-weight: 800; font-family: ui-monospace, monospace; }
+  .deg-num.strong { color: #22c55e; }
+  .deg-num.med { color: #fbbf24; }
+  .deg-num.weak { color: #ef4444; }
+  .deg-bar { height: 10px; background: #171717; border-radius: 5px; overflow: hidden; position: relative; }
+  .deg-bar .before { position: absolute; top: 0; bottom: 0; left: 0; background: #262626; }
+  .deg-bar .after { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 5px 0 0 5px; }
+  .deg-bar .after.mast { background: #22c55e; }
+  .deg-bar .after.learn { background: #fbbf24; }
+  .deg-bar .after.miss { background: #ef4444; }
+  .deg-delta { font-size: 11px; font-family: ui-monospace, monospace; font-weight: 700; text-align: right; }
+
+  /* Milestone list */
+  .milestones { display: flex; flex-direction: column; gap: 6px; }
+  .ms-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: #0f0f0f; border: 1px solid #171717; border-radius: 8px;
+  }
+  .ms-row.promote { border-color: #22c55e44; }
+  .ms-row.new { border-color: #22d3ee44; }
+  .ms-row.watch { border-color: #ef444444; }
+  .ms-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+  .ms-icon.promote { background: #22c55e; color: #0a0a0a; }
+  .ms-icon.new { background: #22d3ee; color: #0a0a0a; }
+  .ms-icon.watch { background: #ef4444; color: #0a0a0a; }
+  .ms-text { flex: 1; font-size: 11px; color: #fafafa; }
+  .ms-text .hl { color: #22d3ee; font-weight: 700; }
+  .ms-text .hl-amber { color: #fbbf24; font-weight: 700; }
+  .ms-text .hl-green { color: #22c55e; font-weight: 700; }
+  .ms-text .hl-red { color: #ef4444; font-weight: 700; }
+
+  /* Bottom CTA */
+  .bottom-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 14px; }
+  .btn-primary {
+    flex: 1; background: #22d3ee; color: #0a0a0a;
+    padding: 14px; text-align: center; border-radius: 8px;
+    font-size: 12px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+  }
+  .btn-secondary {
+    background: #171717; color: #a3a3a3; border: 1px solid #262626;
+    padding: 14px 16px; text-align: center; border-radius: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .next-focus {
+    padding: 10px 12px;
+    background: #0c2430; border: 1px solid #22d3ee33; border-radius: 8px;
+    font-size: 11px; color: #a3a3a3;
+    margin-top: 10px;
+  }
+  .next-focus .lbl { font-size: 8px; color: #22d3ee; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+  .next-focus .text { color: #fafafa; }
+  .next-focus .text .hl { color: #fbbf24; font-weight: 700; }
+
+  /* S3 — coaching note */
+  .coach-note {
+    background: #0f0f0f; border: 1px solid #171717; border-radius: 10px;
+    padding: 16px 18px; margin-bottom: 12px;
+    font-size: 14px; color: #fafafa; line-height: 1.5;
+  }
+  .coach-note .hl-green { color: #22c55e; font-weight: 700; }
+  .coach-note .hl-amber { color: #fbbf24; font-weight: 700; }
+  .coach-note .hl-cyan { color: #22d3ee; font-weight: 700; }
+  .coach-note .sig {
+    display: block; margin-top: 10px; font-size: 10px; color: #525252; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;
+  }
+
+  .mini-bars { display: flex; gap: 4px; margin-top: 10px; align-items: flex-end; }
+  .mini-col { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: stretch; }
+  .mini-col .num { font-size: 11px; font-weight: 800; font-family: ui-monospace, monospace; }
+  .mini-col .num.strong { color: #22c55e; }
+  .mini-col .num.med { color: #fbbf24; }
+  .mini-col .num.weak { color: #ef4444; }
+  .mini-col .bar {
+    position: relative;
+    height: 80px; background: #171717; border-radius: 3px; margin-top: 4px;
+    overflow: hidden;
+  }
+  .mini-col .bar .ghost {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: #2a2a2a;
+  }
+  .mini-col .bar .fill {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    border-top: 1px solid rgba(255,255,255,0.15);
+  }
+  .mini-col .bar .fill.mast { background: #22c55e; }
+  .mini-col .bar .fill.learn { background: #fbbf24; }
+  .mini-col .bar .fill.miss { background: #ef4444; }
+  .mini-col .lbl { font-size: 9px; color: #525252; margin-top: 3px; letter-spacing: 0.1em; font-family: ui-monospace, monospace; font-weight: 700; }
+</style>
+
+<div class="cards">
+
+  <!-- S1 Report card -->
+  <div class="card sum-card" data-choice="s1" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="done-hdr">
+          <div class="done-title">Done<span class="dot">.</span></div>
+          <div class="done-meta">11:23 · 30 items · C &amp; G major</div>
+        </div>
+
+        <div class="big-stats">
+          <div class="bigstat">
+            <div class="num green">24/30</div>
+            <div class="lbl">Pitch</div>
+            <div class="delta delta-pos">+12%</div>
+          </div>
+          <div class="bigstat">
+            <div class="num cyan">28/30</div>
+            <div class="lbl">Label</div>
+            <div class="delta delta-pos">+3%</div>
+          </div>
+          <div class="bigstat">
+            <div class="num amber">6</div>
+            <div class="lbl">Streak</div>
+            <div class="delta">◆ day</div>
+          </div>
+        </div>
+
+        <div class="label" style="margin-bottom: 8px;">Movement by degree</div>
+        <div class="card-z">
+          <div class="deg-grid">
+            <div class="deg-row">
+              <div class="deg-num strong">1</div>
+              <div class="deg-bar">
+                <div class="before" style="width: 90%"></div>
+                <div class="after mast" style="width: 94%"></div>
+              </div>
+              <div class="deg-delta delta-pos">+4%</div>
+            </div>
+            <div class="deg-row">
+              <div class="deg-num med">4</div>
+              <div class="deg-bar">
+                <div class="before" style="width: 67%"></div>
+                <div class="after learn" style="width: 78%"></div>
+              </div>
+              <div class="deg-delta delta-pos">+11%</div>
+            </div>
+            <div class="deg-row">
+              <div class="deg-num strong">5</div>
+              <div class="deg-bar">
+                <div class="before" style="width: 92%"></div>
+                <div class="after mast" style="width: 95%"></div>
+              </div>
+              <div class="deg-delta delta-pos">+3%</div>
+            </div>
+            <div class="deg-row">
+              <div class="deg-num weak">6</div>
+              <div class="deg-bar">
+                <div class="before" style="width: 51%"></div>
+                <div class="after miss" style="width: 48%"></div>
+              </div>
+              <div class="deg-delta delta-neg">−3%</div>
+            </div>
+            <div class="deg-row">
+              <div class="deg-num weak">7</div>
+              <div class="deg-bar">
+                <div class="before" style="width: 48%"></div>
+                <div class="after miss" style="width: 52%"></div>
+              </div>
+              <div class="deg-delta delta-pos">+4%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="next-focus">
+          <div class="lbl">Tomorrow's focus</div>
+          <div class="text"><span class="hl">6 in minor keys</span> — you're slipping there. 10 minutes should be enough.</div>
+        </div>
+
+        <div class="bottom-actions">
+          <div class="btn-secondary">Dashboard</div>
+          <div class="btn-primary">Done</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>S1 · Report card</h3>
+      <p>Numbers forward. Three big stats, degree-by-degree deltas, next-session focus line. Dense; honest; matches cockpit dashboard aesthetic.</p>
+    </div>
+  </div>
+
+  <!-- S2 Before/after visual -->
+  <div class="card sum-card" data-choice="s2" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="done-hdr">
+          <div class="done-title">Done<span class="dot">.</span></div>
+          <div class="done-meta">11:23 · 30 items</div>
+        </div>
+
+        <div class="label" style="margin-bottom: 10px;">Mastery today vs. yesterday</div>
+
+        <div class="card-z" style="padding: 16px 12px;">
+          <div class="mini-bars">
+            <div class="mini-col">
+              <div class="num strong">1</div>
+              <div class="bar">
+                <div class="ghost" style="height: 90%"></div>
+                <div class="fill mast" style="height: 94%"></div>
+              </div>
+              <div class="lbl">+4</div>
+            </div>
+            <div class="mini-col">
+              <div class="num strong">2</div>
+              <div class="bar">
+                <div class="ghost" style="height: 84%"></div>
+                <div class="fill mast" style="height: 86%"></div>
+              </div>
+              <div class="lbl">+2</div>
+            </div>
+            <div class="mini-col">
+              <div class="num strong">3</div>
+              <div class="bar">
+                <div class="ghost" style="height: 88%"></div>
+                <div class="fill mast" style="height: 89%"></div>
+              </div>
+              <div class="lbl">+1</div>
+            </div>
+            <div class="mini-col">
+              <div class="num med">4</div>
+              <div class="bar">
+                <div class="ghost" style="height: 67%"></div>
+                <div class="fill learn" style="height: 78%"></div>
+              </div>
+              <div class="lbl">+11</div>
+            </div>
+            <div class="mini-col">
+              <div class="num strong">5</div>
+              <div class="bar">
+                <div class="ghost" style="height: 92%"></div>
+                <div class="fill mast" style="height: 95%"></div>
+              </div>
+              <div class="lbl">+3</div>
+            </div>
+            <div class="mini-col">
+              <div class="num weak">6</div>
+              <div class="bar">
+                <div class="ghost" style="height: 51%"></div>
+                <div class="fill miss" style="height: 48%"></div>
+              </div>
+              <div class="lbl">−3</div>
+            </div>
+            <div class="mini-col">
+              <div class="num weak">7</div>
+              <div class="bar">
+                <div class="ghost" style="height: 48%"></div>
+                <div class="fill miss" style="height: 52%"></div>
+              </div>
+              <div class="lbl">+4</div>
+            </div>
+          </div>
+          <div style="font-size: 10px; color: #525252; margin-top: 14px; letter-spacing: 0.08em; text-align: center;">
+            dim block = yesterday · bright = today
+          </div>
+        </div>
+
+        <div class="big-stats" style="margin-top: 14px;">
+          <div class="bigstat">
+            <div class="num green">80%</div>
+            <div class="lbl">Pitch</div>
+          </div>
+          <div class="bigstat">
+            <div class="num cyan">93%</div>
+            <div class="lbl">Label</div>
+          </div>
+          <div class="bigstat">
+            <div class="num amber">11m</div>
+            <div class="lbl">Time</div>
+          </div>
+        </div>
+
+        <div class="next-focus">
+          <div class="lbl">Tomorrow</div>
+          <div class="text">Same length. We'll double down on <span class="hl">6</span>.</div>
+        </div>
+
+        <div class="bottom-actions">
+          <div class="btn-secondary">Dashboard</div>
+          <div class="btn-primary">Done</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>S2 · Before/after visual</h3>
+      <p>Degree mastery bars animated from yesterday to today. Visual delta felt, not read. Smaller number grid below. The shift is the hero.</p>
+    </div>
+  </div>
+
+  <!-- S3 Coaching note -->
+  <div class="card sum-card" data-choice="s3" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="screen">
+        <div class="done-hdr">
+          <div class="done-title">Done<span class="dot">.</span></div>
+          <div class="done-meta">11:23 · 30 items</div>
+        </div>
+
+        <div class="coach-note">
+          Good session. You locked in <span class="hl-green">degree 4</span> — it went from learning to reviewing. Degree <span class="hl-amber">7</span> is firming up. The <span class="hl-amber">6</span> is still slippery; we'll keep returning to it.
+          <span class="sig">— Your pacing · day 6 of streak</span>
+        </div>
+
+        <div class="label" style="margin-bottom: 8px;">Movement today</div>
+        <div class="milestones">
+          <div class="ms-row promote">
+            <div class="ms-icon promote">↑</div>
+            <div class="ms-text"><span class="hl-green">4 in C major</span> · promoted to reviewing</div>
+          </div>
+          <div class="ms-row new">
+            <div class="ms-icon new">+</div>
+            <div class="ms-text"><span class="hl">7 in G major</span> · introduced</div>
+          </div>
+          <div class="ms-row watch">
+            <div class="ms-icon watch">!</div>
+            <div class="ms-text"><span class="hl-red">6 in C major</span> · needs attention — back to learning</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;">
+          <div class="bigstat" style="padding: 10px;">
+            <div class="num green" style="font-size: 22px;">24/30</div>
+            <div class="lbl">Pitch</div>
+          </div>
+          <div class="bigstat" style="padding: 10px;">
+            <div class="num cyan" style="font-size: 22px;">28/30</div>
+            <div class="lbl">Label</div>
+          </div>
+        </div>
+
+        <div class="bottom-actions">
+          <div class="btn-secondary">Details</div>
+          <div class="btn-primary">Done</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>S3 · Coaching note</h3>
+      <p>Opens with a 2-sentence human interpretation of what happened. Milestone list shows promotions, new items, items needing attention. Stats de-emphasized. Warmer; more narrative.</p>
+    </div>
+  </div>
+
+</div>
