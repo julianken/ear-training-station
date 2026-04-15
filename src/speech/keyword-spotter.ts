@@ -26,12 +26,68 @@ export interface StartKeywordSpotterInput {
 }
 
 /**
+ * Module-level idempotency state.
+ *
+ * At most one `recognizer.listen` stream is active at a time. Concurrent or
+ * repeated calls to `startKeywordSpotter` share the same handle:
+ *
+ *   - `activeHandle`  — set once listening is established; returned synchronously
+ *                       (via Promise.resolve) to any caller that arrives after
+ *                       the first call resolves.
+ *   - `activePromise` — in-flight Promise while the first call is loading the
+ *                       model and starting the stream; collapsed to callers that
+ *                       arrive concurrently before it resolves.
+ *
+ * State transitions:
+ *   IDLE              activeHandle=null, activePromise=null
+ *   LOADING           activeHandle=null, activePromise=<pending>
+ *   ACTIVE            activeHandle=<handle>, activePromise=<resolved>
+ *   IDLE (after stop) activeHandle=null, activePromise=null  (fresh start next call)
+ *
+ * NOTE: The `probabilityThreshold` and `minConfidence` parameters from `input`
+ * are applied on the FIRST call only. Subsequent callers that pass different
+ * values receive the existing handle unchanged — the thresholds they specify are
+ * silently ignored. Callers that need different thresholds must call stop() first
+ * and then start a new session.
+ */
+let activeHandle: KeywordSpotterHandle | null = null;
+let activePromise: Promise<KeywordSpotterHandle> | null = null;
+
+/**
  * Start listening for digit keywords. The speech-commands library internally opens
  * its own mic stream; no MediaStream needs to be passed in.
+ *
+ * This function is idempotent: multiple callers share a single `recognizer.listen`
+ * stream. Concurrent calls collapse to the same in-flight Promise; calls after
+ * the stream is established return `Promise.resolve(activeHandle)` immediately.
+ * All callers subscribe via the shared `Set<>`, so every subscriber receives
+ * every frame from the single live stream.
  */
 export async function startKeywordSpotter(
   input: StartKeywordSpotterInput = {},
 ): Promise<KeywordSpotterHandle> {
+  // Already active — return the existing handle immediately.
+  if (activeHandle !== null) {
+    return Promise.resolve(activeHandle);
+  }
+
+  // In-flight load — collapse concurrent callers to the same Promise.
+  if (activePromise !== null) {
+    return activePromise;
+  }
+
+  // First caller: build the Promise, store it, then await.
+  activePromise = _createHandle(input);
+
+  // On failure, null activePromise so the next call retries cleanly.
+  activePromise.catch(() => {
+    activePromise = null;
+  });
+
+  return activePromise;
+}
+
+async function _createHandle(input: StartKeywordSpotterInput): Promise<KeywordSpotterHandle> {
   const probabilityThreshold = input.probabilityThreshold ?? 0.75;
   const minConfidence = input.minConfidence ?? 0.75;
   const recognizer: Recognizer = await loadKwsRecognizer();
@@ -82,14 +138,23 @@ export async function startKeywordSpotter(
     },
   );
 
-  return {
+  const handle: KeywordSpotterHandle = {
     async stop() {
       subscribers.clear();
       await recognizer.stopListening();
+      // Null both module-level slots so subsequent startKeywordSpotter calls
+      // get a completely fresh listener.
+      activeHandle = null;
+      activePromise = null;
     },
     subscribe(cb) {
       subscribers.add(cb);
       return () => { subscribers.delete(cb); };
     },
   };
+
+  // Publish the handle at module scope so future callers get it immediately.
+  activeHandle = handle;
+
+  return handle;
 }
