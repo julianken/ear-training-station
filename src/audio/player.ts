@@ -52,8 +52,7 @@ export function playRound(input: PlayRoundInput): PlayRoundHandle {
   for (const ev of input.cadence) {
     const at = now + ev.startSec;
     const hzs: number[] = ev.notes.map((m) => midiToHz(m));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (synth as any).triggerAttackRelease(hzs, ev.durationSec, at);
+    synth.triggerAttackRelease(hzs, ev.durationSec, at);
     lastCadenceEnd = Math.max(lastCadenceEnd, at + ev.durationSec);
   }
 
@@ -65,8 +64,7 @@ export function playRound(input: PlayRoundInput): PlayRoundHandle {
   const cancel = () => {
     cancelled = true;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (synth as any).releaseAll?.();
+      synth.releaseAll();
       synth.disconnect();
       synth.dispose();
     } catch {
