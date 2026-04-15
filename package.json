@@ -35,7 +35,8 @@
   },
   "dependencies": {
     "@tensorflow-models/speech-commands": "0.5.4",
-    "@tensorflow/tfjs": "4.22.0",
+    "@tensorflow/tfjs-backend-cpu": "3.21.0",
+    "@tensorflow/tfjs-backend-webgl": "3.21.0",
     "idb": "8.0.0",
     "tone": "15.0.4"
   }
