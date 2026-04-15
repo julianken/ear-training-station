@@ -1,5 +1,4 @@
 import type { Attempt, AttemptOutcome, Item, LeitnerBox, Register, Session } from '@/types/domain';
-import type { Degree } from '@/types/music';
 import type { ItemsRepo } from '@/store/items-repo';
 import type { AttemptsRepo } from '@/store/attempts-repo';
 import type { SessionsRepo } from '@/store/sessions-repo';
@@ -14,16 +13,16 @@ export interface OrchestratorDeps {
   sessionsRepo: SessionsRepo;
   now: () => number;
   rng: () => number;
-  sessionId: string;
 }
 
 export interface StartSessionInput {
+  sessionId: string;
   target_items: number;
 }
 
 export interface RecordAttemptInput {
   item: Item;
-  target: { hz: number; degree: Degree };
+  target: { hz: number };
   sung: { hz: number | null; cents_off: number | null; confidence: number };
   spoken: { digit: number | null; confidence: number };
   pitchOk: boolean;
@@ -45,6 +44,7 @@ export interface Orchestrator {
 
 export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   let started = false;
+  let currentSessionId: string | null = null;
   const history: RoundHistoryEntry[] = [];
   let completedItems = 0;
   let pitchPasses = 0;
@@ -54,7 +54,11 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
 
   return {
     async startSession(input) {
+      if (started) {
+        throw new Error('Cannot start a new session — a session is already active. Call completeSession() first.');
+      }
       started = true;
+      currentSessionId = input.sessionId;
       history.length = 0;
       completedItems = 0;
       pitchPasses = 0;
@@ -62,7 +66,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       targetItems = input.target_items;
       reviewsInBox = new Map();
       return deps.sessionsRepo.start({
-        id: deps.sessionId,
+        id: currentSessionId,
         target_items: input.target_items,
         started_at: deps.now(),
       });
@@ -76,7 +80,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     },
 
     async recordAttempt(input) {
-      if (!started) throw new Error('session not started');
+      if (!started || currentSessionId === null) throw new Error('session not started');
       const now = deps.now();
       const outcome: AttemptOutcome = {
         pitch: input.pitchOk,
@@ -110,11 +114,11 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
 
       // Record attempt
       const attempt: Attempt = {
-        id: `${deps.sessionId}-${now}-${input.item.id}`,
+        id: `${currentSessionId}-${completedItems}-${input.item.id}`,
         item_id: input.item.id,
-        session_id: deps.sessionId,
+        session_id: currentSessionId,
         at: now,
-        target: input.target,
+        target: { hz: input.target.hz, degree: input.item.degree },
         sung: input.sung,
         spoken: input.spoken,
         graded: outcome,
@@ -134,19 +138,21 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     },
 
     async completeSession() {
+      if (!started || currentSessionId === null) throw new Error('session not started');
       const endedAt = deps.now();
       const items = await deps.itemsRepo.listAll();
       const weakest = pickFocusItem(items);
-      await deps.sessionsRepo.complete(deps.sessionId, {
+      await deps.sessionsRepo.complete(currentSessionId, {
         ended_at: endedAt,
         completed_items: completedItems,
         pitch_pass_count: pitchPasses,
         label_pass_count: labelPasses,
         focus_item_id: weakest?.id ?? null,
       });
-      const out = await deps.sessionsRepo.get(deps.sessionId);
+      const out = await deps.sessionsRepo.get(currentSessionId);
       if (!out) throw new Error('session disappeared');
       started = false;
+      currentSessionId = null;
       return out;
     },
 
@@ -156,7 +162,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
 
     async forceSetBox(id, box) {
       const it = await deps.itemsRepo.get(id);
-      if (!it) return;
+      if (!it) throw new Error(`forceSetBox: item '${id}' not found`);
       await deps.itemsRepo.put({ ...it, box });
     },
   };
