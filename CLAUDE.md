@@ -6,9 +6,17 @@ GitHub: https://github.com/julianken/ear-training-station
 
 ## Current state
 
-- **Plan A · Foundation + Core Logic** — ✅ executed. 88 tests passing, 0 type errors, 21 commits. Pure-logic kernel: types, SRS, scheduler, IndexedDB repos, orchestrator. No audio, no UI yet.
-- **Plan B · Audio I/O** — written (`docs/plans/2026-04-14-plan-b-audio-io.md`), not yet executed. 12 tasks: note math, timbres, cadence/target structures, YIN pitch detection, Hz→degree mapping, Tone.js player, AudioWorklet, mic permission, TF.js speech commands, dev harness, Playwright smoke test.
-- **Plan C · UI + Integration** — not yet written. Will cover Svelte components for all 5 surfaces, session state machine, PWA wiring.
+- **Plan A · Foundation + Core Logic** — ✅ executed. 88 tests passing, 0 type errors. Pure-logic kernel: types, SRS, scheduler, IndexedDB repos, orchestrator.
+- **Plan B · Audio I/O** — in progress.
+  - **Task 1 (note-math)** — ✅ implemented on `feat/audio-note-math` (commit `e0a1ec6`), PR #1 open. Predates the new julianken-bot review flow — has a legacy text-only review. **Needs a fresh `julianken-bot` dispatch for re-review with inline comments before merge.**
+  - **Tasks 2–12** — not started. Next to execute: Task 2 (Timbre registry).
+- **PR #2** — ✅ merged as `c9928cf` (`chore: gitignore playwright cache + loose downloads`). This was the live validation of the new review-and-merge flow end-to-end. Repo setting `delete_branch_on_merge=true` is now on.
+- **julianken-bot review infrastructure** — live at user level:
+  - Skill: `~/.claude/skills/reviewing-as-julianken-bot/` (SKILL.md + output-format.md + dispatch-template.md + merge-flow.md + sanitization.md)
+  - Subagent: `~/.claude/agents/julianken-bot.md` (opus, fresh-context, loads the skill via frontmatter)
+  - Credentials: macOS Keychain, service `julianken-bot@github.com`, accounts `token` / `password` / `totp-secret` / `recovery-codes`
+  - Bot is a `write` collaborator on the repo; Classic PAT with `public_repo` + `repo:invite` scopes
+- **Plan C · UI + Integration** — not yet written.
 
 `git log --oneline` shows the full progression.
 
@@ -59,9 +67,12 @@ After Plan B lands:
 
 ## Execution convention
 
-- **Subagent-driven development with Sonnet agents.** Implementer + reviewer subagents per task, full TDD loop. Plan A ran this way end-to-end and caught multiple real bugs (starter-curriculum interleaving deadlock, attempt-id collision, double-startSession data loss, CVE patches) via the review step.
-- Fresh subagents carry zero session context, so the dispatcher provides complete task text and scene-setting each time. Don't tell the subagent to read the plan file — paste the relevant section into the prompt.
-- Reviews are load-bearing, not ceremony. Don't skip them on "simple" tasks — the bugs hide there.
+- **Subagent-driven development with Sonnet agents** for implementation. Implementer subagent per task, full TDD loop. Plan A ran this way end-to-end and caught multiple real bugs (starter-curriculum interleaving deadlock, attempt-id collision, double-startSession data loss, CVE patches) via the review step.
+- **PR reviews via the `julianken-bot` subagent** — dispatched via the user-level `reviewing-as-julianken-bot` skill (auto-loaded every session). The reviewer runs as `@julianken-bot` (a separate GitHub identity), reads the PR independently via `gh pr view` / `gh pr diff` (**never** injected with a "what changed" narrative — that's anchoring bias), posts inline `file:line` comments via the REST API batch endpoint, and follows a 12-rule anti-slop rubric including mandatory R8 second-pass find. Full rules, safety gates, and autonomous merge decision rule live in the skill's `merge-flow.md`.
+- **Autonomous merge after APPROVE** — the dispatcher applies the decision rule from the skill without asking: BLOCKER/IMPORTANT loop, substantive SUGGESTIONs loop, polish SUGGESTIONs merge as-is. The dispatcher NEVER asks "should I merge?" — the skill defines the rule, the dispatcher applies it. Only `BLOCKED` / `NEEDS_CONTEXT` escalate to the user.
+- For implementers: fresh subagents carry zero session context, so the dispatcher provides complete task text and scene-setting. Don't tell the subagent to read the plan file — paste the relevant section.
+- For reviewers: dispatcher prompt is **minimal context only** (PR# + repo + optional focus constraints + optional out-of-band signals). No narrative, no pre-conclusions, no "I changed X". The reviewer reads the PR itself.
+- Reviews are load-bearing, not ceremony. PR #2's review found a real gitignore bug via R8 mandatory-find that the first pass missed.
 
 ## Testing philosophy
 
