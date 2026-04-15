@@ -2,10 +2,6 @@
   "name": "ear-training",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -19,8 +15,6 @@
     "type": "git",
     "url": "git+https://github.com/julianken/ear-training-station.git"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "module",
   "bugs": {
@@ -29,7 +23,7 @@
   "homepage": "https://github.com/julianken/ear-training-station#readme",
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "4.0.0",
-    "@types/node": "25.6.0",
+    "@types/node": "22.9.0",
     "@vitest/ui": "2.1.4",
     "fake-indexeddb": "6.0.0",
     "jsdom": "25.0.1",
