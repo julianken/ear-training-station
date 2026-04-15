@@ -148,6 +148,7 @@ startPitchBtn.addEventListener('click', async () => {
   startPitchBtn.disabled = true;
 
   try {
+    await ensureAudioContextStarted();
     log('Requesting mic access for pitch detection…');
     micHandle = await requestMicStream();
     // Reuse Tone's AudioContext so repeated Start/Stop cycles don't exhaust Chromium's ~6 concurrent-context limit.
