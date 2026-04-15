@@ -82,4 +82,20 @@ describe('selectNextItem', () => {
     const b = selectNextItem(items, [], 0, seed);
     expect(a).toBe(b);
   });
+
+  it('falls back to soft constraints (drops same-key rule) when all items blocked', () => {
+    const items = [mkItem(1), mkItem(3), mkItem(5)]; // all C_MAJOR
+    // Build a history of 3 consecutive C_MAJOR rounds ending in a DIFFERENT degree
+    // so that no item is blocked by same-degree-back-to-back.
+    const history = [
+      { itemId: items[0]!.id, degree: 1 as const, key: C_MAJOR },
+      { itemId: items[1]!.id, degree: 3 as const, key: C_MAJOR },
+      { itemId: items[2]!.id, degree: 5 as const, key: C_MAJOR },
+    ];
+    // Under strict: all blocked (same-key streak >= 3). Under soft: only degree 5 blocked (back-to-back).
+    // Result: one of items[0] (degree 1) or items[1] (degree 3) returned, never null, never items[2].
+    const pick = selectNextItem(items, history, Date.now(), () => 0);
+    expect(pick).not.toBe(null);
+    expect(pick).not.toBe(items[2]); // degree 5 still blocked (back-to-back)
+  });
 });

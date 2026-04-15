@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isBlocked, type RoundHistoryEntry } from '@/scheduler/interleaving';
+import { isBlocked, isBlockedSameDegree, isBlockedSameKeyStreak, type RoundHistoryEntry } from '@/scheduler/interleaving';
 import type { Item } from '@/types/domain';
 import { C_MAJOR, G_MAJOR } from '../helpers/fixtures';
 
@@ -63,5 +63,46 @@ describe('interleaving', () => {
 
   it('empty history blocks nothing', () => {
     expect(isBlocked(item(5), [])).toBe(false);
+  });
+});
+
+describe('isBlockedSameDegree (soft fallback predicate)', () => {
+  it('blocks same-degree-back-to-back', () => {
+    const history = [seen(item(5))];
+    expect(isBlockedSameDegree(item(5), history)).toBe(true);
+  });
+
+  it('does NOT block on same-key streak (unlike isBlocked)', () => {
+    const history = [
+      seen(item(1, C_MAJOR)),
+      seen(item(3, C_MAJOR)),
+      seen(item(5, C_MAJOR)),
+    ];
+    // isBlocked blocks this; isBlockedSameDegree does not
+    expect(isBlockedSameDegree(item(2, C_MAJOR), history)).toBe(false);
+  });
+
+  it('empty history blocks nothing', () => {
+    expect(isBlockedSameDegree(item(5), [])).toBe(false);
+  });
+});
+
+describe('isBlockedSameKeyStreak', () => {
+  it('blocks 4th consecutive same-key round', () => {
+    const history = [
+      seen(item(1, C_MAJOR)),
+      seen(item(3, C_MAJOR)),
+      seen(item(5, C_MAJOR)),
+    ];
+    expect(isBlockedSameKeyStreak(item(2, C_MAJOR), history)).toBe(true);
+  });
+
+  it('allows when last N in a different key', () => {
+    const history = [
+      seen(item(1, G_MAJOR)),
+      seen(item(3, G_MAJOR)),
+      seen(item(5, G_MAJOR)),
+    ];
+    expect(isBlockedSameKeyStreak(item(2, C_MAJOR), history)).toBe(false);
   });
 });

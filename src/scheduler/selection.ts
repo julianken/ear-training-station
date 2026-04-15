@@ -1,5 +1,5 @@
 import type { Item } from '@/types/domain';
-import { isBlocked, type RoundHistoryEntry } from './interleaving';
+import { isBlocked, isBlockedSameDegree, type RoundHistoryEntry } from './interleaving';
 
 /** Fraction of picks that come from the "keep warm" mastered pool. */
 const WARMUP_SHARE = 0.3;
@@ -26,7 +26,10 @@ export function selectNextItem(
   now: number,
   rng: () => number = Math.random,
 ): Item | null {
-  const eligible = items.filter((it) => !isBlocked(it, history));
+  const eligibleStrict = items.filter((it) => !isBlocked(it, history));
+  const eligible = eligibleStrict.length > 0
+    ? eligibleStrict
+    : items.filter((it) => !isBlockedSameDegree(it, history));
   if (eligible.length === 0) return null;
 
   const mastered = eligible.filter((it) => it.box === 'mastered');
