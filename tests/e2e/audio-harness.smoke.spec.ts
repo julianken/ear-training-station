@@ -13,7 +13,7 @@ test('audio harness: pitch detector reports ~440 Hz on fake sine input', async (
       if (!el) return false;
       const txt = el.textContent ?? '';
       const n = Number(txt);
-      return Number.isFinite(n) && n > 400 && n < 480;
+      return Number.isFinite(n) && n > 430 && n < 450;
     },
     { timeout: 15_000 },
   );
