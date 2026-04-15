@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildTarget, TARGET_DURATION_SECONDS } from '@/audio/target-structure';
-import { C_MAJOR, A_MINOR } from '../helpers/fixtures';
-import { midiToHz } from '@/audio/note-math';
+import { C_MAJOR, A_MINOR, G_MAJOR } from '../helpers/fixtures';
+import { midiToHz, pitchClassToMidi } from '@/audio/note-math';
 
 describe('buildTarget', () => {
   it('returns a single note event for a scale degree in a key', () => {
@@ -16,17 +16,20 @@ describe('buildTarget', () => {
     expect(midiToHz(ev.midi)).toBeCloseTo(391.995, 1);
   });
 
-  it('degree 3 in A minor equals C (MIDI 60) in octave 4', () => {
+  it('degree 3 in A minor equals C5 (MIDI 72) — shifted above tonic A4=69', () => {
     const ev = buildTarget(A_MINOR, 3, 'comfortable');
-    expect(ev.midi).toBe(60);
+    expect(ev.midi).toBe(72);
   });
 
-  it('narrow register stays within one octave above tonic', () => {
-    for (const d of [1, 2, 3, 4, 5, 6, 7] as const) {
-      const ev = buildTarget(C_MAJOR, d, 'narrow');
-      // Tonic in narrow mode = C4 = 60. Max: B4 = 71.
-      expect(ev.midi).toBeGreaterThanOrEqual(60);
-      expect(ev.midi).toBeLessThanOrEqual(71);
+  it('narrow register stays within one octave above tonic (parametrized)', () => {
+    const keys = [C_MAJOR, G_MAJOR, A_MINOR];
+    for (const key of keys) {
+      const tonicMidi = pitchClassToMidi(key.tonic, 4);
+      for (const d of [1, 2, 3, 4, 5, 6, 7] as const) {
+        const ev = buildTarget(key, d, 'narrow');
+        expect(ev.midi).toBeGreaterThanOrEqual(tonicMidi);
+        expect(ev.midi).toBeLessThanOrEqual(tonicMidi + 12);
+      }
     }
   });
 

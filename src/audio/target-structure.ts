@@ -40,7 +40,11 @@ export function buildTarget(
     // 'narrow' and 'comfortable' currently produce the same output: octave 4.
     // Distinguishing them is deferred — the register axis exists now in the data model;
     // concrete narrowing rules live with UI settings (Plan C).
+    const tonicMidi = pitchClassToMidi(key.tonic, 4);
     midi = pitchClassToMidi(targetPc, 4);
+    // Satisfy the "no below-tonic notes" contract: if the pitch class lands below
+    // the tonic in octave 4 (e.g. degree 3 of A minor = C4 < A4), shift up one octave.
+    if (midi < tonicMidi) midi += 12;
   }
 
   return {
