@@ -33,6 +33,10 @@ class YinProcessor extends AudioWorkletProcessor {
   private writePos = 0;
   private sr: number;
   private quantumCount = 0;
+  private samplesWritten = 0;
+  // Preallocated chronological unwrap scratch — reused every call to avoid
+  // per-quantum allocations on the audio render thread (GC pauses → glitches).
+  private readonly scratch: Float32Array = new Float32Array(2048);
 
   constructor() {
     super();
@@ -50,6 +54,12 @@ class YinProcessor extends AudioWorkletProcessor {
       this.buf[this.writePos] = input[i]!;
       this.writePos = (this.writePos + 1) % this.buf.length;
     }
+    this.samplesWritten += input.length;
+
+    // Skip YIN analysis until the ring buffer has been filled at least once;
+    // otherwise the chronological unwrap produces a [zeros | real] seam that
+    // slips past YIN's RMS guard and emits bogus pitch frames for ~320 ms.
+    if (this.samplesWritten < this.buf.length) return true;
 
     // Throttle YIN analysis to once every 8 render quanta (~47 Hz updates).
     // Lower than sample rate but plenty for UI feedback; keeps audio-thread
@@ -61,11 +71,11 @@ class YinProcessor extends AudioWorkletProcessor {
     // The ring buffer's sample at this.writePos is the OLDEST (next to be overwritten),
     // and the sample at this.writePos - 1 (mod length) is the NEWEST. So chronological
     // order is [writePos..end] followed by [0..writePos].
-    const scratch = new Float32Array(this.buf.length);
+    // set() overwrites every index in this.scratch so no zero-reset is needed.
     const tail = this.buf.length - this.writePos;
-    scratch.set(this.buf.subarray(this.writePos), 0);
-    scratch.set(this.buf.subarray(0, this.writePos), tail);
-    const { hz, confidence } = detectPitch(scratch, this.sr);
+    this.scratch.set(this.buf.subarray(this.writePos), 0);
+    this.scratch.set(this.buf.subarray(0, this.writePos), tail);
+    const { hz, confidence } = detectPitch(this.scratch, this.sr);
     // currentTime is declared above as a worklet global (AudioWorkletGlobalScope)
     this.port.postMessage({ hz, confidence, at: currentTime });
     return true;
