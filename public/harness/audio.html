@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio Harness · ear-training-station</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+        background: #0a0a0a; color: #fafafa;
+        margin: 0; padding: 24px;
+        max-width: 720px; margin-inline: auto;
+      }
+      h1 { font-weight: 800; letter-spacing: -0.02em; font-size: 20px; }
+      h2 { font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #737373; font-weight: 700; margin-top: 32px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+      button { background: #22d3ee; color: #0a0a0a; border: 0; padding: 10px 14px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+      button[disabled] { opacity: 0.4; cursor: not-allowed; }
+      button.secondary { background: #171717; color: #fafafa; border: 1px solid #262626; }
+      select, input[type="number"] { background: #171717; color: #fafafa; border: 1px solid #262626; border-radius: 6px; padding: 8px; font-family: inherit; }
+      .log { background: #0f0f0f; border: 1px solid #171717; border-radius: 6px; padding: 12px; font-family: ui-monospace, monospace; font-size: 11px; white-space: pre-wrap; max-height: 300px; overflow: auto; }
+      .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-family: ui-monospace, monospace; font-size: 12px; }
+      .kv .k { color: #737373; letter-spacing: 0.1em; text-transform: uppercase; font-size: 10px; align-self: center; }
+      .kv .v { color: #22d3ee; }
+      .kv .v.amber { color: #fbbf24; }
+      .kv .v.red { color: #ef4444; }
+    </style>
+  </head>
+  <body>
+    <h1>Audio Harness</h1>
+
+    <h2>Playback</h2>
+    <div class="row">
+      <label>Timbre <select id="timbre"></select></label>
+      <label>Key <select id="key"></select></label>
+      <label>Degree <select id="degree"></select></label>
+      <label>Register <select id="register">
+        <option>narrow</option><option selected>comfortable</option><option>wide</option>
+      </select></label>
+      <button id="play">Play round</button>
+    </div>
+
+    <h2>Mic — Pitch</h2>
+    <div class="row">
+      <button id="start-pitch">Start pitch detection</button>
+      <button id="stop-pitch" class="secondary" disabled>Stop</button>
+    </div>
+    <div class="kv">
+      <div class="k">Hz</div><div id="pitch-hz" class="v">—</div>
+      <div class="k">Degree</div><div id="pitch-degree" class="v">—</div>
+      <div class="k">Cents</div><div id="pitch-cents" class="v">—</div>
+      <div class="k">Confidence</div><div id="pitch-conf" class="v">—</div>
+    </div>
+
+    <h2>Mic — Digit</h2>
+    <div class="row">
+      <button id="start-kws">Start digit recognizer</button>
+      <button id="stop-kws" class="secondary" disabled>Stop</button>
+    </div>
+    <div class="kv">
+      <div class="k">Digit</div><div id="kws-digit" class="v amber">—</div>
+      <div class="k">Confidence</div><div id="kws-conf" class="v">—</div>
+    </div>
+
+    <h2>Log</h2>
+    <div id="log" class="log"></div>
+
+    <script type="module" src="/src/harness/audio-harness.ts"></script>
+  </body>
+</html>
