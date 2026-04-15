@@ -55,4 +55,18 @@ describe('buildCadence', () => {
       expect(events[i]!.startSec).toBeGreaterThanOrEqual(events[i - 1]!.startSec);
     }
   });
+
+  it('V chord in major cadence is a major triad (0, 4, 7)', () => {
+    const events = buildCadence(C_MAJOR);
+    const vChord = events[2]!.notes;
+    const offsets = vChord.map((m) => m - vChord[0]!).sort((a, b) => a - b);
+    expect(offsets).toEqual([0, 4, 7]);
+  });
+
+  it('V chord in minor cadence is a major triad for resolution (0, 4, 7)', () => {
+    const events = buildCadence(A_MINOR);
+    const vChord = events[2]!.notes;
+    const offsets = vChord.map((m) => m - vChord[0]!).sort((a, b) => a - b);
+    expect(offsets).toEqual([0, 4, 7]);
+  });
 });
