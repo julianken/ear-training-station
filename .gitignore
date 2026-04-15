@@ -7,3 +7,14 @@ coverage/
 .env
 .env.local
 .superpowers/
+
+# playwright MCP session artifacts — contains downloaded files, screenshots,
+# accessibility snapshots, and console logs. May include secrets pulled from
+# pages (recovery kits, PATs, credentials). NEVER commit.
+.playwright-mcp/
+
+# loose PNG/PDF downloads at the repo root (screenshots, recovery kits, etc.)
+# commit deliberately if you mean to — add the specific file, don't -A.
+/*.pdf
+/kenbot-*.png
+/simplelogin-*.png
