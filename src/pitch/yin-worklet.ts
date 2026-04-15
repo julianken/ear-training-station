@@ -32,6 +32,7 @@ class YinProcessor extends AudioWorkletProcessor {
   private buf: Float32Array = new Float32Array(2048);
   private writePos = 0;
   private sr: number;
+  private quantumCount = 0;
 
   constructor() {
     super();
@@ -50,9 +51,21 @@ class YinProcessor extends AudioWorkletProcessor {
       this.writePos = (this.writePos + 1) % this.buf.length;
     }
 
-    // Run YIN detection on the full 2048-sample ring buffer every render quantum.
-    // For future performance tuning, this could be throttled to once per N quanta.
-    const { hz, confidence } = detectPitch(this.buf, this.sr);
+    // Throttle YIN analysis to once every 8 render quanta (~47 Hz updates).
+    // Lower than sample rate but plenty for UI feedback; keeps audio-thread
+    // CPU bounded.
+    this.quantumCount++;
+    if (this.quantumCount % 8 !== 0) return true;
+
+    // Unwrap ring buffer into chronological scratch array before YIN.
+    // The ring buffer's sample at this.writePos is the OLDEST (next to be overwritten),
+    // and the sample at this.writePos - 1 (mod length) is the NEWEST. So chronological
+    // order is [writePos..end] followed by [0..writePos].
+    const scratch = new Float32Array(this.buf.length);
+    const tail = this.buf.length - this.writePos;
+    scratch.set(this.buf.subarray(this.writePos), 0);
+    scratch.set(this.buf.subarray(0, this.writePos), tail);
+    const { hz, confidence } = detectPitch(scratch, this.sr);
     // currentTime is declared above as a worklet global (AudioWorkletGlobalScope)
     this.port.postMessage({ hz, confidence, at: currentTime });
     return true;
