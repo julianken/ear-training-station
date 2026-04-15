@@ -15,6 +15,6 @@ coverage/
 
 # loose PNG/PDF downloads at the repo root (screenshots, recovery kits, etc.)
 # commit deliberately if you mean to — add the specific file, don't -A.
-*.pdf
-kenbot-*.png
-simplelogin-*.png
+/*.pdf
+/kenbot-*.png
+/simplelogin-*.png
