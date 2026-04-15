@@ -1,4 +1,5 @@
 import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-backend-cpu';
 import * as speechCommands from '@tensorflow-models/speech-commands';
 
 export type Recognizer = speechCommands.SpeechCommandRecognizer;
