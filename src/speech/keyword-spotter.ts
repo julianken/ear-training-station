@@ -52,6 +52,7 @@ export interface StartKeywordSpotterInput {
  */
 let activeHandle: KeywordSpotterHandle | null = null;
 let activePromise: Promise<KeywordSpotterHandle> | null = null;
+let activeStop: Promise<void> | null = null;
 
 /**
  * Start listening for digit keywords. The speech-commands library internally opens
@@ -91,6 +92,9 @@ async function _createHandle(input: StartKeywordSpotterInput): Promise<KeywordSp
   const probabilityThreshold = input.probabilityThreshold ?? 0.75;
   const minConfidence = input.minConfidence ?? 0.75;
   const recognizer: Recognizer = await loadKwsRecognizer();
+  // Serialize after any in-flight stop so speech-commands doesn't throw
+  // "Cannot start streaming again when streaming is ongoing."
+  if (activeStop) await activeStop;
   const labels = recognizer.wordLabels();
 
   const digitIndexes: number[] = DIGIT_LABELS.map((d) => labels.indexOf(d));
@@ -146,7 +150,17 @@ async function _createHandle(input: StartKeywordSpotterInput): Promise<KeywordSp
       activeHandle = null;
       activePromise = null;
       subscribers.clear();
-      await recognizer.stopListening();
+      // Capture the in-flight stopListening so a concurrent start() can await
+      // it before calling recognizer.listen() — otherwise speech-commands throws
+      // "Cannot start streaming again when streaming is ongoing."
+      activeStop = (async () => {
+        try {
+          await recognizer.stopListening();
+        } finally {
+          activeStop = null;
+        }
+      })();
+      await activeStop;
     },
     subscribe(cb) {
       subscribers.add(cb);
