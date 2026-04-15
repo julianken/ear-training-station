@@ -18,3 +18,9 @@ coverage/
 /*.pdf
 /kenbot-*.png
 /simplelogin-*.png
+
+# Playwright test artifacts
+/playwright-report/
+/test-results/
+/playwright/.cache/
+/playwright/downloads/
