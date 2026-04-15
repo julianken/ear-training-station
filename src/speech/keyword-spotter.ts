@@ -140,12 +140,13 @@ async function _createHandle(input: StartKeywordSpotterInput): Promise<KeywordSp
 
   const handle: KeywordSpotterHandle = {
     async stop() {
-      subscribers.clear();
-      await recognizer.stopListening();
-      // Null both module-level slots so subsequent startKeywordSpotter calls
-      // get a completely fresh listener.
+      // Null the module-level cache FIRST so any concurrent startKeywordSpotter()
+      // call during the stopListening() await creates a fresh listener instead of
+      // returning this dying handle (which has an already-cleared subscribers Set).
       activeHandle = null;
       activePromise = null;
+      subscribers.clear();
+      await recognizer.stopListening();
     },
     subscribe(cb) {
       subscribers.add(cb);
