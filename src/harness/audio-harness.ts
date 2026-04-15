@@ -1,3 +1,4 @@
+import * as Tone from 'tone';
 import { TIMBRE_IDS, type TimbreId } from '@/audio/timbres';
 import { DEGREES, type Degree, type PitchClass, type Key, type KeyQuality } from '@/types/music';
 import { buildCadence } from '@/audio/cadence-structure';
@@ -149,9 +150,10 @@ startPitchBtn.addEventListener('click', async () => {
   try {
     log('Requesting mic access for pitch detection…');
     micHandle = await requestMicStream();
-    const audioContext = new AudioContext();
+    // Reuse Tone's AudioContext so repeated Start/Stop cycles don't exhaust Chromium's ~6 concurrent-context limit.
+    const ac = Tone.getContext().rawContext as AudioContext;
     pitchDetector = await startPitchDetector({
-      audioContext,
+      audioContext: ac,
       micStream: micHandle.stream,
     });
 
@@ -184,12 +186,14 @@ startPitchBtn.addEventListener('click', async () => {
     el('pitch-hz').textContent = 'error';
     el('pitch-hz').classList.add('red');
 
-    // Clean up any partial state.
-    micHandle?.stop();
-    micHandle = null;
+    // Stop any partially-initialized handles before nulling to avoid leaks.
+    try { await pitchDetector?.stop(); } catch { /* ignore cleanup errors */ }
+    try { micHandle?.stop(); } catch { /* ignore cleanup errors */ }
     pitchDetector = null;
+    micHandle = null;
     pitchRunning = false;
     startPitchBtn.disabled = false;
+    stopPitchBtn.disabled = true;
   }
 });
 
@@ -254,9 +258,12 @@ startKwsBtn.addEventListener('click', async () => {
     log(`Digit recognizer error: ${msg}`);
     el('kws-digit').textContent = 'error';
 
+    // Stop any partially-initialized handle before nulling to avoid leaks.
+    try { await kwsHandle?.stop(); } catch { /* ignore cleanup errors */ }
     kwsHandle = null;
     kwsRunning = false;
     startKwsBtn.disabled = false;
+    stopKwsBtn.disabled = true;
   }
 });
 
