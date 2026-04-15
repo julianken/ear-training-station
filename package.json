@@ -22,16 +22,16 @@
   },
   "homepage": "https://github.com/julianken/ear-training-station#readme",
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "4.0.0",
+    "@sveltejs/vite-plugin-svelte": "5.1.1",
     "@types/node": "22.9.0",
-    "@vitest/ui": "2.1.9",
+    "@vitest/ui": "3.2.4",
     "fake-indexeddb": "6.0.0",
     "jsdom": "25.0.1",
     "svelte": "5.55.4",
     "svelte-check": "4.0.5",
     "typescript": "5.6.2",
-    "vite": "5.4.21",
-    "vitest": "2.1.9"
+    "vite": "6.4.2",
+    "vitest": "3.2.4"
   },
   "dependencies": {
     "idb": "8.0.0"
