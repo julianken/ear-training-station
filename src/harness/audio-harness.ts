@@ -1,4 +1,3 @@
-import * as Tone from 'tone';
 import { TIMBRE_IDS, type TimbreId } from '@/audio/timbres';
 import { DEGREES, type Degree, type PitchClass, type Key, type KeyQuality } from '@/types/music';
 import { buildCadence } from '@/audio/cadence-structure';
@@ -136,6 +135,12 @@ const stopPitchBtn = el<HTMLButtonElement>('stop-pitch');
 let pitchDetector: PitchDetectorHandle | null = null;
 let micHandle: { stream: MediaStream; stop: () => void } | null = null;
 let pitchRunning = false; // re-entrancy guard
+// Cached native AudioContext for pitch detection — reused across Start/Stop
+// cycles to avoid exhausting Chromium's ~6 concurrent-context limit.
+// A separate context from Tone's is necessary because Tone wraps the native
+// AudioContext in standardized-audio-context, whose instances are not
+// accepted by the native AudioWorkletNode constructor.
+let pitchAudioContext: AudioContext | null = null;
 
 startPitchBtn.addEventListener('click', async () => {
   // Re-entrancy guard: if already running, do nothing.
@@ -151,8 +156,15 @@ startPitchBtn.addEventListener('click', async () => {
     await ensureAudioContextStarted();
     log('Requesting mic access for pitch detection…');
     micHandle = await requestMicStream();
-    // Reuse Tone's AudioContext so repeated Start/Stop cycles don't exhaust Chromium's ~6 concurrent-context limit.
-    const ac = Tone.getContext().rawContext as AudioContext;
+    // Lazily create a native AudioContext for the pitch worklet. Reused on
+    // subsequent Start/Stop cycles to stay within Chromium's context limit.
+    if (!pitchAudioContext || pitchAudioContext.state === 'closed') {
+      pitchAudioContext = new AudioContext();
+    }
+    if (pitchAudioContext.state === 'suspended') {
+      await pitchAudioContext.resume();
+    }
+    const ac = pitchAudioContext;
     pitchDetector = await startPitchDetector({
       audioContext: ac,
       micStream: micHandle.stream,

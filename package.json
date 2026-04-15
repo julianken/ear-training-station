@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -22,6 +23,7 @@
   },
   "homepage": "https://github.com/julianken/ear-training-station#readme",
   "devDependencies": {
+    "@playwright/test": "1.59.1",
     "@sveltejs/vite-plugin-svelte": "5.1.1",
     "@types/node": "22.9.0",
     "@vitest/ui": "3.2.4",
