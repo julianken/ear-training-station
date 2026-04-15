@@ -34,6 +34,8 @@
     "vitest": "3.2.4"
   },
   "dependencies": {
+    "@tensorflow-models/speech-commands": "0.5.4",
+    "@tensorflow/tfjs": "4.22.0",
     "idb": "8.0.0",
     "tone": "15.0.4"
   }
