@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*", "../../packages/core/src/*", "../../packages/web-platform/src/*"],
+      "@ear-training/core/*": ["../../packages/core/src/*"],
+      "@ear-training/web-platform/*": ["../../packages/web-platform/src/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../../packages/core/src/**/*",
+    "../../packages/web-platform/src/**/*"
+  ]
+}

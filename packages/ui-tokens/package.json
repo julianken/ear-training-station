@@ -1,0 +1,7 @@
+{
+  "name": "@ear-training/ui-tokens",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": { ".": "./src/tokens.ts", "./tokens.css": "./src/tokens.css" },
+  "scripts": { "typecheck": "tsc --noEmit" }
+}

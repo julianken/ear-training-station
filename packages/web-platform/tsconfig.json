@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*", "../core/src/*"],
+      "@ear-training/core/*": ["../core/src/*"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*", "../core/src/**/*"]
+}
