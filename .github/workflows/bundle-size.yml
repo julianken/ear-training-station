@@ -27,6 +27,8 @@ jobs:
 
       - name: Build and capture output
         run: pnpm run build 2>&1 | tee build-output.txt
+        env:
+          NO_COLOR: '1'
 
       - name: Report bundle size
         run: |
