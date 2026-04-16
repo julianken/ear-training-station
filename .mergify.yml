@@ -1,0 +1,17 @@
+queue_rules:
+  - name: default
+    merge_method: squash
+    update_method: merge
+    queue_conditions:
+      - "#approved-reviews-by >= 1"
+      - base = main
+      - -draft
+      - -conflict
+      - "check-success = check"
+      - "check-success = lint"
+      - "check-success = e2e (1, 4)"
+      - "check-success = e2e (2, 4)"
+      - "check-success = e2e (3, 4)"
+      - "check-success = e2e (4, 4)"
+      - "check-success = bundle-size"
+      - "check-success = analyze"
