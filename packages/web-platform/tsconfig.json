@@ -1,9 +1,8 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*", "../core/src/*"],
+      "@/*": ["./src/*", "../core/src/*"],
       "@ear-training/core/*": ["../core/src/*"]
     }
   },
