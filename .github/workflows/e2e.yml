@@ -36,7 +36,8 @@ jobs:
         run: pnpm --filter ear-training-station exec playwright install chromium --with-deps
 
       - name: Run e2e tests (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-        run: pnpm --filter ear-training-station test:e2e -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        working-directory: apps/ear-training-station
+        run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
