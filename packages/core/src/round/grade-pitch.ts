@@ -1,7 +1,5 @@
 import type { Item } from '@/types/domain';
 import { mapHzToDegree } from '@/pitch/degree-mapping';
-import { centsBetween, pitchClassToMidi, midiToHz } from '@/audio/note-math';
-import { semitoneOffset } from '@/types/music';
 
 export interface PitchObservation {
   at_ms: number;
@@ -29,10 +27,7 @@ export function gradePitch(
 
   const mapping = mapHzToDegree(best.hz, item.key);
   const pitchOk = mapping !== null && mapping.degree === item.degree && mapping.inKey;
-
-  const targetMidi = pitchClassToMidi(item.key.tonic, 4) + semitoneOffset(item.degree, item.key.quality);
-  const targetHz = midiToHz(targetMidi);
-  const cents_off = centsBetween(best.hz, targetHz);
+  const cents_off = mapping !== null ? mapping.cents : null;
 
   return { pitchOk, sungBest: best, cents_off };
 }
