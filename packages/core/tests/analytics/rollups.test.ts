@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { masteryByDegree, masteryByKey, leitnerCounts, currentStreak } from '@/analytics/rollups';
 import { buildInitialItems } from '@/seed/initial-items';
-import type { Item, Session, LeitnerBox } from '@/types/domain';
-import { keyId } from '@/types/music';
+import type { Item, Session } from '@/types/domain';
 
 const items = buildInitialItems({ now: 0 });
 

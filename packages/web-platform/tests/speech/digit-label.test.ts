@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { digitLabelToNumber } from '@/speech/digit-label';
-import { DIGIT_LABELS, type DigitLabel } from '@/speech/keyword-spotter';
+import type { DigitLabel } from '@/speech/keyword-spotter';
 
 describe('digitLabelToNumber', () => {
   it.each([
