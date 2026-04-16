@@ -45,7 +45,6 @@ export async function requestMicStream(): Promise<MicStreamHandle> {
  */
 export async function queryMicPermission(): Promise<MicPermissionState> {
   try {
-    // @ts-expect-error - Permissions.query with 'microphone' is non-standard in some TS lib versions
     const status = await navigator.permissions.query({ name: 'microphone' });
     if (status.state === 'granted') return 'granted';
     if (status.state === 'denied') return 'denied';
