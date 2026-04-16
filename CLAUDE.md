@@ -9,7 +9,8 @@ GitHub: https://github.com/julianken/ear-training-station
 - **Plan A · Foundation + Core Logic** — ✅ executed. Pure-logic kernel: types, SRS, scheduler, IndexedDB repos, orchestrator.
 - **Plan B · Audio I/O** — ✅ complete and hardened. All 12 tasks plus 2 cleanup PRs merged autonomously.
 - **Plan C0 · Integration Seam** — ✅ complete. 13 PRs merged (PRs #16–#28). Restructured as pnpm monorepo, added round lifecycle reducer, adapters, variability pickers, analytics rollups, design tokens. **Tests:** 221 vitest unit tests + 1 Playwright e2e smoke test, all green. `pnpm run build` produces a clean prod bundle.
-- **Pre-C1 foundation fixes** — ✅ landed via PR #30 (`d6bf577`). KWS `activeThresholds` stale-on-failure bug, `Degree` type leak through event/state/domain chain, settings-repo merge logic for schema evolution. **Head of `main`:** `d6bf577` as of 2026-04-16.
+- **Pre-C1 foundation fixes** — ✅ landed via PR #30 (`d6bf577`). KWS `activeThresholds` stale-on-failure bug, `Degree` type leak through event/state/domain chain, settings-repo merge logic for schema evolution.
+- **GitHub Actions CI** — ✅ complete (PRs #31–#35). 6 workflows: CI (typecheck+test+build), Lint (ESLint), E2E (4-shard Playwright), Bundle Size, CodeQL, plus Dependabot. Branch protection on `main` requires all checks. ESLint added with typescript-eslint + eslint-plugin-svelte. **Head of `main`:** `18c6e1d` as of 2026-04-16.
 - **Pre-C1 design decisions resolved:**
   - `listening → graded` transition: Option B — `CAPTURE_COMPLETE` event with pre-computed outcome. `gradeListeningState()` pure function in core, grading controller in `.svelte.ts`. See project memory `project_listening_graded_design.md` for full rationale.
   - `VariabilitySettings` / `Settings` bridge: keep separate. Session controller constructs `VariabilitySettings` inline with `{ lockedTimbre: null, lockedRegister: null }`. No DB migration needed.
@@ -127,8 +128,28 @@ pnpm run test        # Vitest workspace — 221 tests across core + web-platform
 pnpm run test:watch  # Vitest watch
 pnpm run typecheck   # tsc --noEmit per package (authoritative)
 pnpm run build       # production build (clean, no harness leakage)
+pnpm run lint        # ESLint across all packages (flat config, typescript-eslint + svelte)
 pnpm run test:e2e    # Playwright smoke test (1 test, ~3s after first run)
 ```
+
+## CI (GitHub Actions)
+
+All checks must pass before merging to `main`. Branch protection enforces this (including for admins).
+
+| Workflow | File | Trigger | Job name(s) |
+|----------|------|---------|-------------|
+| CI | `ci.yml` | push + PR | `check` |
+| Lint | `ci-lint.yml` | push + PR | `lint` |
+| E2E | `e2e.yml` | PR only | `e2e (1, 4)` .. `e2e (4, 4)` |
+| Bundle Size | `bundle-size.yml` | PR only | `bundle-size` |
+| CodeQL | `codeql.yml` | PR + weekly + manual | `analyze` |
+
+**Dependabot** (`.github/dependabot.yml`): weekly npm with groups (testing, svelte, tensorflow, eslint), monthly GH Actions. tfjs major versions are blocked (v3 pinning is load-bearing).
+
+**CI gotchas:**
+- `pnpm exec playwright` must be scoped with `--filter ear-training-station` — the binary lives in the app's devDependencies, not the root.
+- Vite emits ANSI escape codes when `CI=true`. The bundle-size workflow uses `NO_COLOR=1` to get parseable output.
+- E2E runs via `pnpm exec playwright test --shard=N/4` with `working-directory`, NOT through `pnpm run test:e2e --` (pnpm's arg passthrough adds a literal `--` that Playwright interprets as end-of-flags).
 
 Dev-only harness URL (not in production builds):
 ```
