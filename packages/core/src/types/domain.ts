@@ -53,7 +53,7 @@ export interface Attempt {
     confidence: number;
   };
   spoken: {
-    digit: number | null;
+    digit: Degree | null;
     confidence: number;
   };
   graded: AttemptOutcome;
