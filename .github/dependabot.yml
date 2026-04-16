@@ -1,0 +1,26 @@
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      testing:
+        patterns: ["vitest", "@vitest/*", "@playwright/*", "playwright"]
+      svelte:
+        patterns: ["svelte", "svelte-*", "@sveltejs/*", "vite", "@sveltejs/vite-*"]
+      tensorflow:
+        patterns: ["@tensorflow/*", "@tensorflow-models/*"]
+      eslint:
+        patterns: ["eslint", "eslint-*", "typescript-eslint", "@eslint/*"]
+    ignore:
+      # tfjs v3 pinning is load-bearing — speech-commands@0.5.4 peer-depends on v3
+      - dependency-name: "@tensorflow/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@tensorflow-models/*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
