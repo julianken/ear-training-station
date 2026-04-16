@@ -12,6 +12,12 @@ updates:
         patterns: ["svelte", "svelte-*", "@sveltejs/*", "vite", "@sveltejs/vite-*"]
       tensorflow:
         patterns: ["@tensorflow/*", "@tensorflow-models/*"]
+    ignore:
+      # tfjs v3 pinning is load-bearing — speech-commands@0.5.4 peer-depends on v3
+      - dependency-name: "@tensorflow/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@tensorflow-models/*"
+        update-types: ["version-update:semver-major"]
       eslint:
         patterns: ["eslint", "eslint-*", "typescript-eslint", "@eslint/*"]
   - package-ecosystem: "github-actions"
