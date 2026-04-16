@@ -10,8 +10,12 @@ export interface DegreeMapping {
   inKey: boolean;
 }
 
-/** Pitch must be within this cents range of a diatonic degree to count as "in key". */
-const IN_KEY_CENTS = 50;
+/**
+ * Pitch must be within ±50 cents of a diatonic degree to count as "in key."
+ * For equidistant pitches, the first degree in iteration order (ascending from 1)
+ * wins the tie-break deterministically.
+ */
+export const IN_KEY_CENTS = 50;
 
 /**
  * Map a detected Hz to the nearest diatonic scale degree in the given key,
