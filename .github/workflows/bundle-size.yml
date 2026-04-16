@@ -1,0 +1,44 @@
+# .github/workflows/bundle-size.yml
+name: Bundle Size
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and capture output
+        run: pnpm run build 2>&1 | tee build-output.txt
+        env:
+          NO_COLOR: '1'
+
+      - name: Report bundle size
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size | Gzip |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
+          grep -E "^\s*dist/" build-output.txt | while IFS= read -r line; do
+            file=$(echo "$line" | awk '{print $1}')
+            size=$(echo "$line" | awk '{print $2, $3}')
+            gzip=$(echo "$line" | awk -F'gzip: ' '{print $2}')
+            echo "| \`$file\` | $size | $gzip |" >> $GITHUB_STEP_SUMMARY
+          done
