@@ -10,7 +10,7 @@
     "@tensorflow/tfjs-backend-cpu": "3.21.0",
     "@tensorflow/tfjs-backend-webgl": "3.21.0",
     "idb": "8.0.0",
-    "tone": "15.0.4"
+    "tone": "15.1.22"
   },
   "devDependencies": { "fake-indexeddb": "6.0.0" }
 }
