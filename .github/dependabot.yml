@@ -1,0 +1,20 @@
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      testing:
+        patterns: ["vitest", "@vitest/*", "@playwright/*", "playwright"]
+      svelte:
+        patterns: ["svelte", "svelte-*", "@sveltejs/*", "vite", "@sveltejs/vite-*"]
+      tensorflow:
+        patterns: ["@tensorflow/*", "@tensorflow-models/*"]
+      eslint:
+        patterns: ["eslint", "eslint-*", "typescript-eslint", "@eslint/*"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
