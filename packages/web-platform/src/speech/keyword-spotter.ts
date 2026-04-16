@@ -44,15 +44,15 @@ export interface StartKeywordSpotterInput {
  *   ACTIVE            activeHandle=<handle>, activePromise=<resolved>
  *   IDLE (after stop) activeHandle=null, activePromise=null  (fresh start next call)
  *
- * NOTE: The `probabilityThreshold` and `minConfidence` parameters from `input`
- * are applied on the FIRST call only. Subsequent callers that pass different
- * values receive the existing handle unchanged — the thresholds they specify are
- * silently ignored. Callers that need different thresholds must call stop() first
- * and then start a new session.
+ * NOTE: `probabilityThreshold` and `minConfidence` are locked on the FIRST call.
+ * Subsequent callers with IDENTICAL thresholds receive the same handle (idempotent).
+ * Subsequent callers with DIFFERENT thresholds receive a descriptive Error — call
+ * stop() first to unlock and change thresholds.
  */
 let activeHandle: KeywordSpotterHandle | null = null;
 let activePromise: Promise<KeywordSpotterHandle> | null = null;
 let activeStop: Promise<void> | null = null;
+let activeThresholds: { probabilityThreshold: number; minConfidence: number } | null = null;
 
 /**
  * Start listening for digit keywords. The speech-commands library internally opens
@@ -67,18 +67,50 @@ let activeStop: Promise<void> | null = null;
 export async function startKeywordSpotter(
   input: StartKeywordSpotterInput = {},
 ): Promise<KeywordSpotterHandle> {
-  // Already active — return the existing handle immediately.
+  // Resolve defaults up front so threshold comparison works correctly for both
+  // the already-active check and the in-flight-promise check below.
+  const probabilityThreshold = input.probabilityThreshold ?? 0.75;
+  const minConfidence = input.minConfidence ?? 0.75;
+
+  // Already active — return the existing handle if thresholds match; throw if
+  // the caller is trying to silently change thresholds on a live stream.
   if (activeHandle !== null) {
+    if (
+      activeThresholds !== null &&
+      (activeThresholds.probabilityThreshold !== probabilityThreshold ||
+        activeThresholds.minConfidence !== minConfidence)
+    ) {
+      throw new Error(
+        `startKeywordSpotter called with different thresholds while active. ` +
+        `Current: prob=${activeThresholds.probabilityThreshold}, conf=${activeThresholds.minConfidence}. ` +
+        `Requested: prob=${probabilityThreshold}, conf=${minConfidence}. ` +
+        `Call stop() first to change thresholds.`,
+      );
+    }
     return Promise.resolve(activeHandle);
   }
 
-  // In-flight load — collapse concurrent callers to the same Promise.
+  // In-flight load — collapse concurrent callers to the same Promise,
+  // but reject if they request different thresholds than the first caller.
   if (activePromise !== null) {
+    if (
+      activeThresholds !== null &&
+      (activeThresholds.probabilityThreshold !== probabilityThreshold ||
+        activeThresholds.minConfidence !== minConfidence)
+    ) {
+      throw new Error(
+        `startKeywordSpotter called with different thresholds while loading. ` +
+        `In-flight: prob=${activeThresholds.probabilityThreshold}, conf=${activeThresholds.minConfidence}. ` +
+        `Requested: prob=${probabilityThreshold}, conf=${minConfidence}. ` +
+        `Call stop() first to change thresholds.`,
+      );
+    }
     return activePromise;
   }
 
-  // First caller: build the Promise, store it, then await.
-  activePromise = _createHandle(input);
+  // First caller: record thresholds, build the Promise, store it, then await.
+  activeThresholds = { probabilityThreshold, minConfidence };
+  activePromise = _createHandle({ probabilityThreshold, minConfidence });
 
   // On failure, null activePromise so the next call retries cleanly.
   activePromise.catch(() => {
@@ -88,9 +120,10 @@ export async function startKeywordSpotter(
   return activePromise;
 }
 
-async function _createHandle(input: StartKeywordSpotterInput): Promise<KeywordSpotterHandle> {
-  const probabilityThreshold = input.probabilityThreshold ?? 0.75;
-  const minConfidence = input.minConfidence ?? 0.75;
+async function _createHandle(
+  input: Required<StartKeywordSpotterInput>,
+): Promise<KeywordSpotterHandle> {
+  const { probabilityThreshold, minConfidence } = input;
   const recognizer: Recognizer = await loadKwsRecognizer();
   // Serialize after any in-flight stop so speech-commands doesn't throw
   // "Cannot start streaming again when streaming is ongoing."
@@ -149,6 +182,7 @@ async function _createHandle(input: StartKeywordSpotterInput): Promise<KeywordSp
       // returning this dying handle (which has an already-cleared subscribers Set).
       activeHandle = null;
       activePromise = null;
+      activeThresholds = null;
       subscribers.clear();
       // Capture the in-flight stopListening so a concurrent start() can await
       // it before calling recognizer.listen() — otherwise speech-commands throws
@@ -168,8 +202,10 @@ async function _createHandle(input: StartKeywordSpotterInput): Promise<KeywordSp
     },
   };
 
-  // Publish the handle at module scope so future callers get it immediately.
+  // Publish the handle and its thresholds at module scope so future callers
+  // get the handle immediately and can validate their thresholds match.
   activeHandle = handle;
+  activeThresholds = { probabilityThreshold, minConfidence };
 
   return handle;
 }
