@@ -1,4 +1,5 @@
 import type { Item, Register, AttemptOutcome } from '@/types/domain';
+import type { Degree } from '@/types/music';
 import type { TimbreId } from '@/variability/pickers';
 import type { RoundEvent } from './events';
 import type { PitchObservation } from './grade-pitch';
@@ -7,8 +8,8 @@ export type RoundState =
   | { kind: 'idle' }
   | { kind: 'playing_cadence'; item: Item; timbre: TimbreId; register: Register; startedAt: number }
   | { kind: 'playing_target';  item: Item; timbre: TimbreId; register: Register; targetStartedAt: number; frames: PitchObservation[] }
-  | { kind: 'listening';       item: Item; timbre: TimbreId; register: Register; targetStartedAt: number; frames: PitchObservation[]; digit: number | null; digitConfidence: number }
-  | { kind: 'graded';          item: Item; timbre: TimbreId; register: Register; outcome: AttemptOutcome; sungBest: PitchObservation | null; digitHeard: number | null };
+  | { kind: 'listening';       item: Item; timbre: TimbreId; register: Register; targetStartedAt: number; frames: PitchObservation[]; digit: Degree | null; digitConfidence: number }
+  | { kind: 'graded';          item: Item; timbre: TimbreId; register: Register; outcome: AttemptOutcome; sungBest: PitchObservation | null; digitHeard: Degree | null };
 
 export function roundReducer(state: RoundState, event: RoundEvent): RoundState {
   if (event.type === 'USER_CANCELED' && state.kind !== 'idle' && state.kind !== 'graded') {

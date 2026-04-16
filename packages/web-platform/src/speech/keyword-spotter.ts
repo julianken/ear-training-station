@@ -115,6 +115,7 @@ export async function startKeywordSpotter(
   // On failure, null activePromise so the next call retries cleanly.
   activePromise.catch(() => {
     activePromise = null;
+    activeThresholds = null;
   });
 
   return activePromise;

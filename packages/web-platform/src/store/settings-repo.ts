@@ -11,7 +11,7 @@ export function createSettingsRepo(db: DB): _SettingsRepo {
   return {
     async getOrDefault() {
       const existing = await db.get('settings', KEY);
-      return existing ?? { ...DEFAULT_SETTINGS };
+      return { ...DEFAULT_SETTINGS, ...existing };
     },
 
     async update(partial: Partial<Settings>) {

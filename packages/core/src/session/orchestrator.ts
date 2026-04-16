@@ -1,4 +1,5 @@
 import type { Attempt, AttemptOutcome, Item, LeitnerBox, Register, Session } from '@/types/domain';
+import type { Degree } from '@/types/music';
 import type { ItemsRepo, AttemptsRepo, SessionsRepo } from '@/repos/interfaces';
 import { selectNextItem } from '@/scheduler/selection';
 import type { RoundHistoryEntry } from '@/scheduler/interleaving';
@@ -22,7 +23,7 @@ export interface RecordAttemptInput {
   item: Item;
   target: { hz: number };
   sung: { hz: number | null; cents_off: number | null; confidence: number };
-  spoken: { digit: number | null; confidence: number };
+  spoken: { digit: Degree | null; confidence: number };
   pitchOk: boolean;
   labelOk: boolean;
   timbre: string;
