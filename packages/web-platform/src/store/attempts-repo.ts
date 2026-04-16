@@ -1,5 +1,4 @@
 import type { DB } from './db';
-import type { Attempt } from '@ear-training/core/types/domain';
 import type { AttemptsRepo as _AttemptsRepo } from '@ear-training/core/repos/interfaces';
 
 export type { AttemptsRepo } from '@ear-training/core/repos/interfaces';

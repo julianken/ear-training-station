@@ -1,5 +1,4 @@
 import type { DB } from './db';
-import type { Item } from '@ear-training/core/types/domain';
 import type { ItemsRepo as _ItemsRepo } from '@ear-training/core/repos/interfaces';
 
 export type { ItemsRepo } from '@ear-training/core/repos/interfaces';
