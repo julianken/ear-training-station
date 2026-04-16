@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { mapHzToDegree } from '@/pitch/degree-mapping';
+import { mapHzToDegree, IN_KEY_CENTS } from '@/pitch/degree-mapping';
 import { C_MAJOR, A_MINOR } from '../helpers/fixtures';
 import { midiToHz, pitchClassToMidi } from '@/audio/note-math';
+
+describe('IN_KEY_CENTS', () => {
+  it('is exported and equals 50', () => {
+    expect(IN_KEY_CENTS).toBe(50);
+  });
+});
 
 describe('mapHzToDegree', () => {
   it('exact C maps to degree 1 in C major', () => {
