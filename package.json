@@ -2,6 +2,7 @@
   "name": "ear-training-monorepo",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm --filter ear-training-station dev",
     "build": "pnpm --filter ear-training-station build",
