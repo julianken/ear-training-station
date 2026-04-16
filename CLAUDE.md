@@ -7,10 +7,11 @@ GitHub: https://github.com/julianken/ear-training-station
 ## Current state
 
 - **Plan A · Foundation + Core Logic** — ✅ executed. Pure-logic kernel: types, SRS, scheduler, IndexedDB repos, orchestrator.
-- **Plan B · Audio I/O** — ✅ complete and hardened. All 12 tasks plus 2 cleanup PRs merged autonomously via the subagent-driven flow. **Head of `main`:** `6903750` as of 2026-04-15. **Tests:** 124 vitest unit tests + 1 Playwright e2e smoke test, all green. `npm run build` produces a clean prod bundle with no harness leakage.
-- **Plan C · UI + Integration** — ⬜ **not yet written.** The spec (`docs/specs/2026-04-14-ear-training-mvp-design.md`) is the source of truth for what and why; Plan C needs to be authored before execution. It should cover: Svelte session screen (split-stage chord blocks + scrolling pitch trace), F2 feedback panel with segmented replay, dashboard (mastery bars, key heatmap, Leitner boxes, streak chip), summary screen, service worker for KWS model + sample caching, and wiring the orchestrator (Plan A) to the audio stack (Plan B) behind real UI.
+- **Plan B · Audio I/O** — ✅ complete and hardened. All 12 tasks plus 2 cleanup PRs merged autonomously.
+- **Plan C0 · Integration Seam** — ✅ complete. 13 PRs merged (PRs #16–#28). Restructured as pnpm monorepo, added round lifecycle reducer, adapters, variability pickers, analytics rollups, design tokens. **Head of `main`:** `0dc5f30` as of 2026-04-15. **Tests:** 221 vitest unit tests + 1 Playwright e2e smoke test, all green. `pnpm run build` produces a clean prod bundle.
+- **Plan C1 · UI + Integration** — ⬜ **not yet written.** The spec (`docs/specs/2026-04-14-ear-training-mvp-design.md`) is the source of truth for what and why; Plan C1 needs to be authored before execution. It should cover: Svelte session screen (split-stage chord blocks + scrolling pitch trace), F2 feedback panel with segmented replay, dashboard (mastery bars, key heatmap, Leitner boxes, streak chip), summary screen, service worker for KWS model + sample caching, and wiring the orchestrator (Plan A) to the audio stack (Plan B) behind the round reducer (Plan C0) and real UI.
 
-**Plan B run stats (for context):** 14 PRs merged, 9 real bugs caught by julianken-bot review loops — 3 foundation-level (narrow-register contract violation invisible on C-major-only test; YIN ring-buffer seam + startup-window contamination; wrong tfjs version pair shipped by the plan itself creating a disjoint-backend runtime BLOCKER), 6 cheap-local-fix. Zero user escalations across the autonomous run once authorized. See `memory/project_plan_b_state.md` in the user-level memory for the full ledger.
+**Plan C0 run stats:** 13 PRs merged, 4 real bugs caught by julianken-bot reviews — octave-invariant cents_off mismatch (grade-pitch computed against fixed octave-4 target), UTC day boundaries in streak calculation, LOADING-state threshold guard gap in KWS, Degree return type narrowing for digitLabelToNumber. Zero user escalations.
 
 - **julianken-bot review infrastructure** — live at user level, validated end-to-end across 17 review dispatches during the Plan B run:
   - Skill: `~/.claude/skills/reviewing-as-julianken-bot/` (SKILL.md + output-format.md + dispatch-template.md + merge-flow.md + sanitization.md)
@@ -21,55 +22,83 @@ GitHub: https://github.com/julianken/ear-training-station
 
 `git log --oneline` shows the full progression since Plan B started.
 
-## Plan B module surface (what Plan C will consume)
+## Monorepo structure
 
-These are the exported entry points Plan C wires into its UI + session state machine. All are on `main` and unit-tested where tested-able.
+pnpm workspace with four packages:
 
-**Types (Plan A):**
-- `@/types/music` — `Key`, `Degree` (`1..7`), `PitchClass` (`'C'..'B'`), `DEGREES`, `PITCH_CLASSES`, `semitoneOffset(degree, quality)`
-- `@/types/domain` — `Register` (`'narrow' | 'comfortable' | 'wide'`)
+```
+packages/core/          @ear-training/core          — pure TypeScript, no browser APIs
+packages/web-platform/  @ear-training/web-platform  — browser infra (Tone, AudioWorklet, speech-commands, IndexedDB)
+packages/ui-tokens/     @ear-training/ui-tokens     — design tokens (TS + CSS)
+apps/ear-training-station/  ear-training-station     — app shell, Svelte entry point, dev harness, e2e
+```
 
-**Pure audio structure:**
-- `@/audio/note-math` — `midiToHz`, `hzToMidi`, `pitchClassToMidi(pc, octave)`, `centsBetween(sung, target)`, `nearestMidi(hz)`
-- `@/audio/cadence-structure` — `buildCadence(key): ChordEvent[]`, `CADENCE_DURATION_SECONDS` (`3.2s`). I-IV-V-I (major) or i-iv-V-i with major V (minor). Voicings in octave 4.
-- `@/audio/target-structure` — `buildTarget(key, degree, register): NoteEvent`, `TARGET_DURATION_SECONDS` (`1.5s`). Narrow/comfortable both enforce "at or above tonic" via the octave-shift guard; wide uses deterministic octave variation.
-- `@/audio/timbres` — `TIMBRE_IDS` (`'piano' | 'epiano' | 'guitar' | 'pad'`), `getTimbre(id).createSynth()` returns a fresh Tone.js `PolySynth` per round (caller owns disposal)
+Cross-package imports use package names: `import { Key } from '@ear-training/core/types/music'`. Within a package, `@/` alias points to that package's `src/`.
 
-**Audio playback (integration, harness-tested):**
-- `@/audio/player` — `ensureAudioContextStarted()` (must be called from a user-gesture handler), `playRound({timbreId, cadence, target, gapSec?}): PlayRoundHandle`. Handle has `done: Promise<void>`, `targetStartAtAcTime: Promise<number>`, `cancel()`. Synth is auto-disposed after `done` resolves.
+## Module surface (what Plan C1 will consume)
 
-**Mic input:**
-- `@/mic/permission` — `requestMicStream(): Promise<MicStreamHandle>` returns `{stream, stop}`. Constraints: `echoCancellation: true`, `noiseSuppression: true`, `autoGainControl: false`, `channelCount: 1`. `queryMicPermission(): Promise<MicPermissionState>` falls back to `'unknown'` on browsers without the Permissions API.
+**Types (Plan A, `@ear-training/core`):**
+- `types/music` — `Key`, `Degree`, `PitchClass`, `DEGREES`, `PITCH_CLASSES`, `semitoneOffset`, `keyId`, `itemId`
+- `types/domain` — `Item`, `Session`, `Attempt`, `AttemptOutcome`, `Settings`, `Register`, `LeitnerBox`, `Accuracy`
+- `repos/interfaces` — `ItemsRepo`, `AttemptsRepo`, `SessionsRepo`, `SettingsRepo` (pure interfaces; implementations in web-platform)
 
-**Pitch detection (pure + integration):**
-- `@/pitch/yin` — `detectPitch(buffer: Float32Array, sampleRate): {hz, confidence}`. Pure math, unit-tested. Returns `hz=0, confidence=0` on silence/noise.
-- `@/pitch/pitch-detector` — `startPitchDetector({audioContext, micStream}): Promise<PitchDetectorHandle>` with `subscribe((frame) => ...)` + `stop()`. The worklet (`yin-worklet.ts`) runs YIN on a 2048-sample ring buffer, unwrapped chronologically per call, gated on `samplesWritten >= buf.length` to avoid startup contamination, throttled to every 8th render quantum (~47 Hz frame rate). **`AudioWorkletNode` requires a native `AudioContext`, not Tone's wrapped `rawContext`** — see the harness for the cached-native-context pattern.
-- `@/pitch/degree-mapping` — `mapHzToDegree(hz, key): DegreeMapping | null`. Octave-invariant. `inKey = |cents| < 50`. Returns `null` for non-positive hz.
+**Pure audio structure (`@ear-training/core`):**
+- `audio/note-math` — `midiToHz`, `hzToMidi`, `pitchClassToMidi`, `centsBetween`, `nearestMidi`
+- `audio/cadence-structure` — `buildCadence(key): ChordEvent[]`, `CADENCE_DURATION_SECONDS` (`3.2s`)
+- `audio/target-structure` — `buildTarget(key, degree, register): NoteEvent`, `TARGET_DURATION_SECONDS` (`1.5s`)
+- `pitch/yin` — `detectPitch(buffer, sampleRate): {hz, confidence}`. Pure math.
+- `pitch/degree-mapping` — `mapHzToDegree(hz, key): DegreeMapping | null`, `IN_KEY_CENTS` (50)
 
-**Speech / digit recognition:**
-- `@/speech/keyword-spotter` — `startKeywordSpotter({probabilityThreshold?, minConfidence?}): Promise<KeywordSpotterHandle>` with `subscribe/stop`. **Idempotent at the library boundary:** concurrent callers share a single listener via module-level handle cache; rapid `stop()`→`start()` sequences are serialized via an in-flight `activeStop` Promise so `speech-commands` doesn't throw "Cannot start streaming again." Vocab: `'one' | 'two' | 'three' | 'four' | 'five' | 'six' | 'seven'`. `null` digit emitted when none of the target labels crosses `minConfidence`.
-- `@/speech/kws-loader` — `loadKwsRecognizer()` Promise-memoized (concurrent callers share the in-flight load, auto-nulls on rejection). WebGL + CPU backends both registered via side-effect imports; tfjs-core picks WebGL by priority, falls back to CPU automatically in headless/WebGL-unavailable environments.
+**Round lifecycle (Plan C0, `@ear-training/core`):**
+- `round/events` — `RoundEvent` discriminated union (7 variants, all with `at_ms: number`)
+- `round/grade-pitch` — `gradePitch(frames, item, minConfidence): PitchGrade`, `PitchObservation`
+- `round/state` — `RoundState` (5 variants), `roundReducer(state, event) → state'`. The `listening → graded` transition is deferred to Plan C1 composition.
+- `variability/pickers` — `pickTimbre(rng, history, settings)`, `pickRegister(...)`, `TimbreId`, `VariabilityHistory`, `VariabilitySettings`
+- `analytics/rollups` — `masteryByDegree(items)`, `masteryByKey(items)`, `leitnerCounts(items)`, `currentStreak(sessions, now, tzOffsetMs?)`
 
-**Dev harness:** `harness/audio.html` (repo root, NOT in `public/`) + `src/harness/audio-harness.ts`. Served by Vite dev at `http://localhost:5173/harness/audio.html`. Deliberately excluded from `npm run build` output to keep speech-commands out of the prod graph. Features Play Round, Start Pitch Detection, Start Digit Recognizer with re-entrancy guards and visible error display.
+**Audio playback (`@ear-training/web-platform`):**
+- `audio/player` — `ensureAudioContextStarted()`, `playRound({timbreId, cadence, target, gapSec?}): PlayRoundHandle`
+- `audio/timbres` — `TIMBRE_IDS`, `getTimbre(id).createSynth()`
 
-## Plan C integration items (polish deferred from Plan B reviews)
+**Mic input (`@ear-training/web-platform`):**
+- `mic/permission` — `requestMicStream(): Promise<MicStreamHandle>`, `queryMicPermission()`
 
-Three items were classified as polish during the Plan B run and left to surface naturally when Plan C lands real callers. Address each when the relevant layer gets wired in, NOT as proactive cleanup:
+**Pitch detection (`@ear-training/web-platform`):**
+- `pitch/pitch-detector` — `startPitchDetector({audioContext, micStream}): Promise<PitchDetectorHandle>`. **`AudioWorkletNode` requires a native `AudioContext`, not Tone's wrapped `rawContext`.**
 
-1. **PR #6 YIN noise test LCG brittleness** — the noise-rejection test currently relies on a single LCG seed. Tighten to pin `hz === 0` explicitly if a future refactor of YIN's confidence formula requires it. Not a runtime concern; test-hygiene only.
-2. **PR #7 degree-mapping `IN_KEY_CENTS` export** — when the Plan C feedback UI starts color-coding "on the diatonic degree" vs "off-key," export `IN_KEY_CENTS = 50` from `@/pitch/degree-mapping` so the UI shares the threshold instead of duplicating the constant. Also worth adding a docstring about the deterministic tie-break for equidistant pitches (current: first-degree wins in iteration order).
-3. **PR #10 `MicPermissionState.unavailable` dead variant** — the union declares `'unavailable'` but `queryMicPermission` never returns it. When Plan C's settings UI starts using the state machine, either remove the dead variant or have `queryMicPermission` return it on API-missing instead of `'unknown'`.
+**Speech / digit recognition (`@ear-training/web-platform`):**
+- `speech/keyword-spotter` — `startKeywordSpotter({probabilityThreshold?, minConfidence?})`. Idempotent cache; **throws on threshold mismatch** (call `stop()` first to change thresholds).
+- `speech/digit-label` — `digitLabelToNumber(label: DigitLabel): Degree`
+- `speech/kws-loader` — `loadKwsRecognizer()` Promise-memoized
 
-None are latent runtime bugs. None block Plan C execution.
+**Round adapters (`@ear-training/web-platform`):**
+- `round-adapters/` — `pitchFrameToEvent`, `digitFrameToEvent`, `targetStartedEvent`, `cadenceStartedEvent`, `playbackDoneEvent`, `roundStartedEvent`, `userCanceledEvent`. Injectable `Clock` for tests. These are the ONLY modules that know the two-clock problem exists.
+
+**Design tokens (`@ear-training/ui-tokens`):**
+- `tokens` — `colors` object (`bg`, `panel`, `border`, `text`, `muted`, `cyan`, `amber`, `green`, `red`)
+- `tokens.css` — matching CSS custom properties (`var(--cyan)`, etc.)
+
+**Dev harness:** `apps/ear-training-station/harness/audio.html` + `src/harness/audio-harness.ts`. Served by Vite dev at `http://localhost:5173/harness/audio.html`. Excluded from production builds.
+
+## Plan C1 integration items (polish deferred from earlier reviews)
+
+Two items remain from Plan B reviews. Address when Plan C1 lands real callers, NOT as proactive cleanup:
+
+1. **PR #6 YIN noise test LCG brittleness** — test-hygiene only, not a runtime concern.
+2. **PR #10 `MicPermissionState.unavailable` dead variant** — the union declares `'unavailable'` but `queryMicPermission` never returns it. When Plan C1's settings UI uses the state machine, either remove it or return it on API-missing.
+
+(PR #7 `IN_KEY_CENTS` export was completed in Plan C0 Task 2.)
 
 ## Docs to read first
 
 1. `docs/specs/2026-04-14-ear-training-mvp-design.md` — what we're building and why (the source of truth for decisions)
 2. `docs/research/2026-04-14-ear-training-research-synthesis.md` — evidence behind the pedagogy
 3. `docs/plans/2026-04-14-plan-a-foundation-core-logic.md` — executed plan (reference for conventions + TDD shape)
-4. `docs/plans/2026-04-14-plan-b-audio-io.md` — executed plan (reference for conventions + module API expectations). **Note:** a few implementer-made corrections diverge from the plan text — the code on `main` is authoritative, not the plan. Divergences: PR #5 target-structure uses pitch-class-then-octave arithmetic with a below-tonic octave-shift guard (plan had a bug); PR #9 worklet uses chronological ring-buffer unwrap + startup gate + preallocated scratch + every-8-quantum throttle (plan had the naive linear-memory version); PR #11 tfjs deps are v3 backends with explicit side-effect imports, NOT `@tensorflow/tfjs@4.22.0` as the plan said.
-5. `docs/mockups/*.html` — visual design decisions (aesthetic, session screen, feedback state, dashboard, summary) as static HTML mockups
-6. **Plan C does not exist yet.** Before executing Plan C work, author `docs/plans/<today>-plan-c-ui-integration.md` using the brainstorming skill + Plan A/B as structural references.
+4. `docs/plans/2026-04-14-plan-b-audio-io.md` — executed plan (reference for conventions). Code on `main` is authoritative where it diverges from plan text.
+5. `docs/specs/2026-04-15-plan-c-phase-0-integration-seam-design.md` — Phase C0 design spec (brainstormed + approved)
+6. `docs/plans/2026-04-15-plan-c0-integration-seam.md` — Phase C0 execution plan (14 tasks, all executed)
+7. `docs/mockups/*.html` — visual design decisions (aesthetic, session screen, feedback state, dashboard, summary) as static HTML mockups
+8. **Plan C1 does not exist yet.** Before executing Plan C1 work, author `docs/plans/<today>-plan-c1-ui-integration.md` using the brainstorming skill.
 
 ## Non-negotiable design commitments
 
@@ -89,29 +118,30 @@ If a task would drift one of these, stop and ask.
 ## Dev commands
 
 ```bash
-npm run dev         # Vite dev server on :5173
-npm run test        # Vitest — 124 tests on main
-npm run test:watch  # Vitest watch
-npm run typecheck   # tsc --noEmit (authoritative)
-npm run build       # production build (clean, no harness leakage)
-npm run test:e2e    # Playwright smoke test (1 test, ~3s after first run)
+pnpm run dev         # Vite dev server on :5173 (app)
+pnpm run test        # Vitest workspace — 221 tests across core + web-platform + ui-tokens
+pnpm run test:watch  # Vitest watch
+pnpm run typecheck   # tsc --noEmit per package (authoritative)
+pnpm run build       # production build (clean, no harness leakage)
+pnpm run test:e2e    # Playwright smoke test (1 test, ~3s after first run)
 ```
 
 Dev-only harness URL (not in production builds):
 ```
 http://localhost:5173/harness/audio.html
 ```
-Open it after `npm run dev`, click Play Round / Start Pitch Detection / Start Digit Recognizer to sanity-check the full Plan B audio stack end-to-end.
+Open it after `pnpm run dev`, click Play Round / Start Pitch Detection / Start Digit Recognizer to sanity-check the full audio stack end-to-end.
 
 ## Known gotchas
 
-- **LSP diagnostics lag behind the filesystem.** When a new file or a new `@/...` import lands, the editor LSP may flag "Cannot find module" OR "declared but never read" for a minute or two — and sometimes the stale state persists with specific parameter-type errors that look convincingly real. **`npm run typecheck` is authoritative.** Trust `tsc` and `vitest` over editor squiggles. This pattern showed up dozens of times during Plan B. The correct default is: see a system-reminder diagnostic on a file the implementer just created, run `npm run typecheck` on the branch, see it exit 0, move on. Don't loop fixing phantoms.
+- **LSP diagnostics lag behind the filesystem.** When a new file or a new import lands, the editor LSP may flag "Cannot find module" OR "declared but never read" for a minute or two — and sometimes the stale state persists with specific parameter-type errors that look convincingly real. **`pnpm run typecheck` is authoritative.** Trust `tsc` and `vitest` over editor squiggles. This pattern showed up dozens of times during Plans B and C0. The correct default is: see a system-reminder diagnostic, run `pnpm run typecheck`, see it exit 0, move on. Don't loop fixing phantoms.
 - **Tone.js under jsdom.** Tone touches `AudioContext` at module load. Tone 15.0.4 happens to load cleanly under jsdom without any shim because the factory pattern (`getTimbre(id).createSynth()`) defers `AudioContext` construction. If a future Tone version breaks this, wrap the synth factory in a dynamic import or add a jsdom audio shim — do NOT mock all of Tone.
 - **`AudioWorkletNode` rejects Tone's wrapped context.** `Tone.getContext().rawContext` returns a `standardized-audio-context` wrapper instance, which native `new AudioWorkletNode(ctx, ...)` rejects with "parameter 1 is not of type 'BaseAudioContext'". The harness uses a module-cached **native** `AudioContext` (`pitchAudioContext`) for the YIN worklet specifically; `playRound` still uses Tone's context. Plan C UI code must follow the same split: pitch detection → native context (cached, reused), playback → Tone.
-- **Harness is NOT in `public/`.** It lives at `harness/audio.html` (repo root, sibling to `src/`), deliberately OUTSIDE of `public/` so Vite's static-copy step doesn't land it in `dist/`. Vite's dev server still serves it at `/harness/audio.html` automatically. If Plan C moves it or tries to include it in the prod bundle, speech-commands gets dragged in, its `util.promisify` import fails the production build. Keep the harness dev-only.
-- **tfjs version pinning is load-bearing.** `@tensorflow-models/speech-commands@0.5.4` peer-depends on tfjs-core v3. Do NOT install `@tensorflow/tfjs@4.x` alongside it — they install as disjoint parallel graphs and speech-commands sees no registered backend at runtime. Current working config: `@tensorflow/tfjs-backend-webgl@3.21.0` + `@tensorflow/tfjs-backend-cpu@3.21.0` + side-effect imports in `src/speech/kws-loader.ts`.
+- **Harness is NOT in `public/`.** It lives at `apps/ear-training-station/harness/audio.html`, deliberately OUTSIDE of `public/` so Vite's static-copy step doesn't land it in `dist/`. Vite's dev server still serves it at `/harness/audio.html` automatically. Keep the harness dev-only.
+- **tfjs version pinning is load-bearing.** `@tensorflow-models/speech-commands@0.5.4` peer-depends on tfjs-core v3. Do NOT install `@tensorflow/tfjs@4.x` alongside it. Current working config in `packages/web-platform/package.json`: `@tensorflow/tfjs-backend-webgl@3.21.0` + `@tensorflow/tfjs-backend-cpu@3.21.0` + side-effect imports in `packages/web-platform/src/speech/kws-loader.ts`.
 - **Audio-render thread is allocation-sensitive.** Per-call `new Float32Array(...)` inside the worklet's `process()` method creates GC pressure that can glitch audio. The YIN worklet preallocates a `scratch` buffer on the class and reuses it. Apply the same discipline to any future audio-thread code.
-- **npm audit.** CVEs in dev deps got cleared in Plan A (bumped vite 5→6 + svelte-plugin 4→5 + vitest 2→3). Expect `0 vulnerabilities` on a fresh install; if new ones appear, don't mass-upgrade — audit first.
+- **pnpm workspace `@/` alias.** Each package's vitest config and tsconfig set `@/` to point to THAT PACKAGE's `src/`. Within core, `@/types/music` resolves to `packages/core/src/types/music.ts`. Within web-platform, `@/store/db` resolves to `packages/web-platform/src/store/db.ts`. Cross-package imports use the full package name: `@ear-training/core/types/music`.
+- **pnpm audit.** CVEs in dev deps got cleared in Plan A. Expect `0 vulnerabilities` on a fresh install; if new ones appear, don't mass-upgrade — audit first.
 
 ## Execution convention
 
@@ -124,9 +154,11 @@ Open it after `npm run dev`, click Play Round / Start Pitch Detection / Start Di
 
 ## Testing philosophy
 
-- **Pure modules** (types, SRS math, scheduler, note math, YIN, degree mapping): full Vitest unit coverage. Test the math with synthetic input.
-- **Persistence** (IndexedDB): Vitest + `fake-indexeddb` (auto-wired in `tests/helpers/test-setup.ts`).
-- **Audio playback, mic input, ML inference**: NOT unit-tested. Covered by the dev harness (Plan B task 11) and a single Playwright smoke test (Plan B task 12). Do not chase 100% unit coverage of Web Audio — it's a mocking trap.
+- **Pure modules** (`packages/core` — types, SRS, scheduler, round reducer, grade-pitch, variability, analytics): full Vitest unit coverage. Test the math with synthetic input. Orchestrator unit tests use in-memory stub repos (`packages/core/tests/helpers/stub-repos.ts`).
+- **Persistence** (IndexedDB): Vitest + `fake-indexeddb` (auto-wired in `packages/web-platform/tests/helpers/test-setup.ts`). Orchestrator integration tests with real repos live in `packages/web-platform/tests/session/`.
+- **Round adapters**: Vitest with injectable `Clock` stub. No real `Date.now()` in tests.
+- **Audio playback, mic input, ML inference**: NOT unit-tested. Covered by the dev harness and a single Playwright smoke test. Do not chase 100% unit coverage of Web Audio — it's a mocking trap.
+- **Design tokens**: Agreement test verifies `tokens.ts` ↔ `tokens.css` have identical values.
 
 ## When in doubt
 
