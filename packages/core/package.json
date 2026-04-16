@@ -1,0 +1,11 @@
+{
+  "name": "@ear-training/core",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@ear-training/web-platform",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": { "./*": "./src/*.ts" },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "@ear-training/core": "workspace:*",
+    "@tensorflow-models/speech-commands": "0.5.4",
+    "@tensorflow/tfjs-backend-cpu": "3.21.0",
+    "@tensorflow/tfjs-backend-webgl": "3.21.0",
+    "idb": "8.0.0",
+    "tone": "15.0.4"
+  },
+  "devDependencies": { "fake-indexeddb": "6.0.0" }
+}
