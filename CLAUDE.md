@@ -144,6 +144,8 @@ All checks must pass before merging to `main`. Branch protection enforces this (
 | Bundle Size | `bundle-size.yml` | PR only | `bundle-size` |
 | CodeQL | `codeql.yml` | PR + weekly + manual | `analyze` |
 
+**Mergify** (`.mergify.yml`): merge queue with squash strategy. PRs are NOT auto-queued — after approval and green checks, comment `@Mergifyio queue` on the PR to enter the merge queue. Mergify then squash-merges when queue conditions are met (1 approval, all checks, no draft, no conflict).
+
 **Dependabot** (`.github/dependabot.yml`): weekly npm with groups (testing, svelte, tensorflow, eslint), monthly GH Actions. tfjs major versions are blocked (v3 pinning is load-bearing).
 
 **CI gotchas:**
