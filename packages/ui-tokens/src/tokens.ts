@@ -1,1 +1,13 @@
-export {};
+export const colors = {
+  bg: '#0a0a0a',
+  panel: '#141414',
+  border: '#2a2a2a',
+  text: '#f5f5f7',
+  muted: '#86868b',
+  cyan: '#22d3ee',
+  amber: '#fbbf24',
+  green: '#22c55e',
+  red: '#ef4444',
+} as const;
+
+export type ColorToken = keyof typeof colors;
