@@ -43,14 +43,18 @@ export function leitnerCounts(items: ReadonlyArray<Item>): Record<LeitnerBox, nu
 
 const DAY_MS = 86_400_000;
 
-function dayIndex(ts: number): number {
-  return Math.floor(ts / DAY_MS);
+function dayIndex(ts: number, tzOffsetMs: number): number {
+  return Math.floor((ts + tzOffsetMs) / DAY_MS);
 }
 
-export function currentStreak(sessions: ReadonlyArray<Session>, now: number): number {
+export function currentStreak(
+  sessions: ReadonlyArray<Session>,
+  now: number,
+  tzOffsetMs: number = 0,
+): number {
   if (sessions.length === 0) return 0;
-  const days = new Set(sessions.map((s) => dayIndex(s.started_at)));
-  const today = dayIndex(now);
+  const days = new Set(sessions.map((s) => dayIndex(s.started_at, tzOffsetMs)));
+  const today = dayIndex(now, tzOffsetMs);
   if (!days.has(today) && !days.has(today - 1)) return 0;
   let streak = 0;
   let check = days.has(today) ? today : today - 1;

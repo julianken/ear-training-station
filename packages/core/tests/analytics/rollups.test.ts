@@ -90,4 +90,14 @@ describe('currentStreak', () => {
     ];
     expect(currentStreak(sessions, now)).toBe(1);
   });
+
+  it('respects timezone offset for day boundaries', () => {
+    const midnight = Math.floor(Date.now() / DAY) * DAY;
+    const session1 = makeSession(midnight + 10 * 3600_000);
+    const session2 = makeSession(midnight + 23.5 * 3600_000);
+    const now = midnight + 24 * 3600_000;
+
+    expect(currentStreak([session1, session2], now, 0)).toBe(1);
+    expect(currentStreak([session1, session2], now, 3600_000)).toBe(2);
+  });
 });
