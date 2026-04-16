@@ -90,12 +90,26 @@ export async function startKeywordSpotter(
     return Promise.resolve(activeHandle);
   }
 
-  // In-flight load — collapse concurrent callers to the same Promise.
+  // In-flight load — collapse concurrent callers to the same Promise,
+  // but reject if they request different thresholds than the first caller.
   if (activePromise !== null) {
+    if (
+      activeThresholds !== null &&
+      (activeThresholds.probabilityThreshold !== probabilityThreshold ||
+        activeThresholds.minConfidence !== minConfidence)
+    ) {
+      throw new Error(
+        `startKeywordSpotter called with different thresholds while loading. ` +
+        `In-flight: prob=${activeThresholds.probabilityThreshold}, conf=${activeThresholds.minConfidence}. ` +
+        `Requested: prob=${probabilityThreshold}, conf=${minConfidence}. ` +
+        `Call stop() first to change thresholds.`,
+      );
+    }
     return activePromise;
   }
 
-  // First caller: build the Promise, store it, then await.
+  // First caller: record thresholds, build the Promise, store it, then await.
+  activeThresholds = { probabilityThreshold, minConfidence };
   activePromise = _createHandle({ probabilityThreshold, minConfidence });
 
   // On failure, null activePromise so the next call retries cleanly.
