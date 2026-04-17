@@ -6,8 +6,12 @@
 
   let { children } = $props();
 
-  onMount(() => {
+  onMount(async () => {
     void hydrateShellStores();
+    if (import.meta.env.MODE === 'production') {
+      const { registerSW } = await import('virtual:pwa-register');
+      registerSW({ immediate: true });
+    }
   });
 </script>
 

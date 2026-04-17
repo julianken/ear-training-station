@@ -1,16 +1,17 @@
 /**
  * PWA service worker tests.
  *
- * NOTE: Service worker registration does not function in Vite's dev server
- * (devOptions.enabled is false in vite.config.ts to avoid SW hijacking HMR).
- * These tests require `pnpm run preview` against a production build.
+ * NOTE: Service worker registration is wired in +layout.svelte (MODE === 'production'),
+ * but these tests run against Vite's dev server where SW emission is disabled
+ * (devOptions.enabled: false in vite.config.ts). Registration never fires in dev.
  *
- * The test below is skipped in the default CI Playwright run (which uses the
- * dev server). To verify manually:
+ * The offline-boot test below is skipped in the default CI Playwright run.
+ * To verify manually against a production build:
  *
  *   pnpm run build
  *   pnpm run preview
- *   # Set PW_BASE_URL=http://localhost:4173 and run the test with --no-skip
+ *   # playwright.config.ts baseURL must point at http://localhost:4173
+ *   # Then run: pnpm exec playwright test pwa --headed
  *
  * A future task can add a separate Playwright project targeting the preview
  * server once the CI workflow has a build step before the e2e run.
