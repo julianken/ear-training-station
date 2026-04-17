@@ -140,6 +140,11 @@ git push -u origin ci/core-checks
 
 ```bash
 gh pr create --title "ci: add core CI workflow" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 - Adds `.github/workflows/ci.yml` — runs typecheck, unit tests, and build on push to main and PRs
 - Adds `packageManager` field to root `package.json` for pnpm version pinning in CI
@@ -309,6 +314,11 @@ git push -u origin ci/eslint
 
 ```bash
 gh pr create --title "ci: add ESLint config and lint workflow" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 - Adds `eslint.config.mjs` — flat config with typescript-eslint + eslint-plugin-svelte
 - Adds `.github/workflows/ci-lint.yml` — runs `pnpm lint` on push/PR to main
@@ -412,6 +422,11 @@ git push -u origin ci/e2e
 
 ```bash
 gh pr create --title "ci: add sharded Playwright e2e workflow" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 - Adds `.github/workflows/e2e.yml` — 4-shard Playwright matrix on PRs to main
 - Skips draft PRs, uploads test artifacts on failure
@@ -511,6 +526,11 @@ git push -u origin ci/bundle-size
 
 ```bash
 gh pr create --title "ci: add bundle size reporting workflow" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 - Adds `.github/workflows/bundle-size.yml` — builds the app and reports chunk sizes in PR summary
 - Parses Vite's build output into a markdown table (file, size, gzip)
@@ -610,6 +630,11 @@ git push -u origin ci/codeql-dependabot
 
 ```bash
 gh pr create --title "ci: add CodeQL and Dependabot" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 - Adds `.github/workflows/codeql.yml` — JS/TS security scanning on PRs, weekly schedule, and manual trigger
 - Adds `.github/dependabot.yml` — weekly grouped npm updates, monthly GH Actions updates
