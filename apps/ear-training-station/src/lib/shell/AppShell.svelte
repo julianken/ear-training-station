@@ -2,6 +2,7 @@
   import { resolve } from '$app/paths';
   import StreakChip from './StreakChip.svelte';
   import ShellToast from './ShellToast.svelte';
+  import DegradationBanner from './DegradationBanner.svelte';
   let { children } = $props();
 </script>
 
@@ -13,6 +14,7 @@
       <a class="settings-link" href={resolve('/settings')} aria-label="Settings">⚙ Settings</a>
     </nav>
   </header>
+  <DegradationBanner />
   <main class="shell-outlet">
     {@render children?.()}
   </main>

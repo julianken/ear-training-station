@@ -15,7 +15,7 @@ import { availableRegisters } from '@ear-training/core/scheduler/register-gating
 import { buildAttemptPersistence } from '@ear-training/core/round/persistence';
 import { nextBoxOnPass, nextBoxOnMiss } from '@ear-training/core/srs/leitner';
 import { SvelteMap } from 'svelte/reactivity';
-import { allItems, consecutiveNullCount } from '$lib/shell/stores';
+import { allItems, consecutiveNullCount, degradationState } from '$lib/shell/stores';
 
 export interface SessionControllerDeps {
   session: Session;
@@ -160,10 +160,9 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
           if (labelOk) this.#labelPasses++;
         } catch (e) {
           // Persistence failed — leave counters at pre-round values so controller
-          // state stays consistent with the DB. A future C1.4 task will surface this
-          // to a shell-level degradation banner / toast.
-          // TODO(c1.4): surface persistence failure to the UI
+          // state stays consistent with the DB. Surface the failure to the shell banner.
           console.error('session-controller: persistence failed, round not counted', e);
+          degradationState.update((s) => ({ ...s, persistenceFailing: true }));
         }
       }
 
@@ -236,7 +235,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
           });
         });
       } catch {
-        // KWS unavailable — degradation banner handled by shell store (Task in C1.4)
+        degradationState.update((s) => ({ ...s, kwsUnavailable: true }));
       }
 
       this.#recorderHandle = await startAudioRecorder({ audioContext: ctx, micStream: stream, maxDurationSec: 6 });

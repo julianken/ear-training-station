@@ -3,7 +3,7 @@ import { get } from 'svelte/store';
 import { createSessionController } from './session-controller.svelte';
 import type { Item, Session } from '@ear-training/core/types/domain';
 import type { RoundState } from '@ear-training/core/round/state';
-import { allItems, consecutiveNullCount } from '$lib/shell/stores';
+import { allItems, consecutiveNullCount, degradationState } from '$lib/shell/stores';
 
 /** Flush all pending microtasks so async fire-and-forget dispatches complete. */
 async function flushPromises(): Promise<void> {
@@ -441,6 +441,34 @@ describe('SessionController — persistence failure counter consistency', () => 
       digitConfidence: 0.9,
     } as never);
   }
+
+  beforeEach(() => {
+    degradationState.set({ kwsUnavailable: false, persistenceFailing: false, micLost: false });
+  });
+
+  it('sets degradationState.persistenceFailing when itemsRepo.put rejects', async () => {
+    const deps = makeDeps();
+    deps.itemsRepo.put = vi.fn(async () => { throw new Error('quota exceeded'); });
+    const ctrl = createSessionController(deps);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    expect(get(degradationState).persistenceFailing).toBe(true);
+  });
+
+  it('sets degradationState.persistenceFailing when attemptsRepo.append rejects', async () => {
+    const deps = makeDeps();
+    deps.attemptsRepo.append = vi.fn(async () => { throw new Error('db closed'); });
+    const ctrl = createSessionController(deps);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    expect(get(degradationState).persistenceFailing).toBe(true);
+  });
 
   it('does not advance counters when itemsRepo.put rejects', async () => {
     const deps = makeDeps();

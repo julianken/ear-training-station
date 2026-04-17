@@ -6,8 +6,16 @@ export const settings = writable<Settings>(DEFAULT_SETTINGS);
 export const allItems = writable<Item[]>([]);
 export const allSessions = writable<Session[]>([]);
 
-export type DegradationState = 'ok' | 'kws-unavailable';
-export const degradationState = writable<DegradationState>('ok');
+export interface DegradationState {
+  kwsUnavailable: boolean;
+  persistenceFailing: boolean;
+  micLost: boolean;
+}
+export const degradationState = writable<DegradationState>({
+  kwsUnavailable: false,
+  persistenceFailing: false,
+  micLost: false,
+});
 export const consecutiveNullCount = writable(0);
 
 export type ToastLevel = 'info' | 'warn' | 'error';
