@@ -37,3 +37,20 @@ describe('RoundEvent', () => {
     expect(events).toHaveLength(7);
   });
 });
+
+describe('RoundEvent union — CAPTURE_COMPLETE', () => {
+  it('accepts a CAPTURE_COMPLETE event with a ListeningGrade payload', () => {
+    const event: RoundEvent = {
+      type: 'CAPTURE_COMPLETE',
+      at_ms: 1000,
+      grade: {
+        outcome: { pitch: true, label: true, pass: true, at: 1000 },
+        cents_off: 5,
+        sungBest: { at_ms: 500, hz: 440, confidence: 0.9 },
+        spokenDigit: 5,
+        spokenConfidence: 0.95,
+      },
+    };
+    expect(event.type).toBe('CAPTURE_COMPLETE');
+  });
+});
