@@ -18,13 +18,24 @@
 
 Where it helps explain the change, embed a mermaid diagram using a ```mermaid fenced block — GitHub renders it inline. High-value mermaid candidates in this plan: the round-reducer state machine (for Task 6's CAPTURE_COMPLETE wiring), the component tree inside `ActiveRound`, event-dispatch sequences, navigation between session / summary / dashboard.
 
-**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-3/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body via a relative markdown image link: `![feedback panel on pass](../../docs/screenshots/c1-3/task7-feedback-panel/pass-state.png)`. Example snippet for the e2e spec:
+**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-3/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body using an ABSOLUTE `raw.githubusercontent.com` URL with the branch interpolated at PR-creation time. Relative paths like `../../docs/...` do **not** work in PR bodies (GitHub resolves them against `/pull/N/`, not the repo root); the raw URL form works for both in-review PRs and post-merge viewers.
+
+Example snippet in the e2e spec:
 
 ```typescript
 await page.screenshot({ path: 'docs/screenshots/c1-3/task7-feedback-panel/pass-state.png', fullPage: true });
 ```
 
-Subagents `git add docs/screenshots/...` before the PR commit. Human drag-and-drop screenshots are welcome follow-ups but not required for subagent-generated PRs.
+And in the PR-creation step:
+
+```bash
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+gh pr create --body "...
+![feedback on pass](https://raw.githubusercontent.com/julianken/ear-training-station/$BRANCH/docs/screenshots/c1-3/task7-feedback-panel/pass-state.png)
+..."
+```
+
+Subagents `git add docs/screenshots/...` before committing. Human drag-and-drop screenshots welcome as follow-ups but not required for subagent-generated PRs.
 
 ---
 

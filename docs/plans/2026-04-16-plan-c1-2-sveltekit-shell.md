@@ -16,14 +16,25 @@
 
 **PR body requirements — screenshots + mermaid for UI tasks:** every PR in this plan that adds or modifies visible UI (any `.svelte` file, CSS/tokens affecting rendering, any route) MUST include at least one screenshot referenced in the PR body. When architecture, flow, state machine, component tree, or navigation graph clarifies the change, embed a mermaid diagram in the PR body using a ```mermaid fenced block. GitHub renders mermaid inline.
 
-**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-2/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body via a relative markdown image link: `![dashboard picker](../../docs/screenshots/c1-2/task3-station-dashboard/picker.png)`. Example snippet to add at the end of the e2e spec:
+**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-2/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body using an ABSOLUTE `raw.githubusercontent.com` URL with the branch interpolated at PR-creation time. Relative paths like `../../docs/...` do **not** work in PR bodies (GitHub resolves them against `/pull/N/`, not the repo root — see [github/markup#576](https://github.com/github/markup/issues/576)); the raw URL form works for both in-review PRs (pointing at the PR branch) and post-merge viewers (point at `main`).
+
+Example snippet inside the e2e spec:
 
 ```typescript
 // Capture screenshot for PR body
 await page.screenshot({ path: 'docs/screenshots/c1-2/task3-station-dashboard/picker.png', fullPage: true });
 ```
 
-Subagents run `pnpm exec playwright test ... -- --update-snapshots` (or simply let the screenshot call fire as part of a normal test run), then `git add docs/screenshots/...` before committing. Human-in-the-loop drag-and-drop is fine for follow-up polish but not required for the subagent-generated PR.
+And in the commit/push step, interpolate the branch when building the PR body:
+
+```bash
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+gh pr create --body "...
+![picker](https://raw.githubusercontent.com/julianken/ear-training-station/$BRANCH/docs/screenshots/c1-2/task3-station-dashboard/picker.png)
+..."
+```
+
+Subagents `git add docs/screenshots/...` before the PR commit. Human drag-and-drop screenshots are welcome follow-ups but not required for subagent-generated PRs.
 
 ---
 
