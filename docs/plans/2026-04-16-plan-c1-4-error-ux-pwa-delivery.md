@@ -14,6 +14,8 @@
 
 **TDD discipline — unit AND e2e:** continued. E2E tests are written before implementation for each user-visible error UX component. Service worker acceptance is a Playwright test that simulates offline and verifies the precached shell loads.
 
+**PR body requirements — screenshots + mermaid for UI tasks:** every PR in Tasks 1–3 (MicDeniedGate, DegradationBanner, ShellToast) MUST include at least one screenshot in the PR body showing the component in its triggered state. Task 4 (service worker) should include a mermaid flowchart of the cache strategy (precache flow + runtime-cache flow for the KWS model). Task 5 (axe a11y) and Task 6 (bundle budget) ship text-only PRs — screenshots not required, but mermaid diagrams welcome if they clarify flows. Task 7 (small config cleanup) is text-only. Capture screenshots via `pnpm run dev` after the feature works; attach via drag-and-drop in the PR description. Implementer subagents are expected to follow this as part of PR creation.
+
 ---
 
 ## Task map

@@ -14,6 +14,8 @@
 
 **TDD discipline — unit AND e2e:** every task that introduces user-visible behavior includes a Playwright e2e test written BEFORE the implementation, alongside the component unit test. The e2e test is the acceptance gate: a feature is not "done" until Playwright passes on top of Vitest. Shared Playwright fixtures + helpers land in Task 1. Feature tasks (2–5) each gain an explicit "Write the failing e2e test" step before the component work.
 
+**PR body requirements — screenshots + mermaid for UI tasks:** every PR in this plan that adds or modifies visible UI (any `.svelte` file, CSS/tokens affecting rendering, any route) MUST include at least one screenshot in the PR body. When architecture, flow, state machine, component tree, or navigation graph clarifies the change, embed a mermaid diagram in the PR body using a ```mermaid fenced block. GitHub renders mermaid inline — this is the fastest way to communicate structure without external tooling. Screenshots: take them from `pnpm run dev` in a real browser at `http://localhost:5173` after the task's user flow works, then drag into the GitHub PR comment box (produces a markdown image link). Implementer subagents dispatched for tasks in this plan are expected to follow this requirement as part of their PR creation step.
+
 ---
 
 ## Task map

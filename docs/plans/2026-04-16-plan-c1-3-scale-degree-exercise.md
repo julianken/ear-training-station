@@ -14,6 +14,8 @@
 
 **TDD discipline — unit AND e2e:** continued from C1.2. Every task that introduces user-visible behavior includes a Playwright e2e test written BEFORE the component. For round-playback tasks (5, 6, 7, 8) where driving Web Audio in Playwright is genuinely hard, the unit-test layer carries TDD and the e2e layer is a single integration test at the end of Task 6 that seeds a graded-state session via the controller's test hooks. Tasks 2, 9, 11, 12 are UX flows with straightforward e2e.
 
+**PR body requirements — screenshots + mermaid for UI tasks:** every PR in this plan MUST include at least one screenshot in the PR body (every task here ships visible UI). Where it helps explain the change, embed a mermaid diagram using a ```mermaid fenced block — GitHub renders it inline. Good mermaid candidates in this plan: component trees, round state-machine transitions, event-dispatch sequences, reducer wiring, route navigation between session / summary / dashboard. Capture screenshots via `pnpm run dev` (http://localhost:5173) once the user flow works, then drag into the GitHub PR comment box. Implementer subagents for tasks in this plan are expected to follow this requirement as part of PR creation.
+
 ---
 
 ## Task map
