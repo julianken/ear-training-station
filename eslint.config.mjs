@@ -10,7 +10,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/.svelte-kit/**',
-      'apps/ear-training-station/harness/**',
+      'apps/ear-training-station/build/**',
     ],
   },
 
@@ -51,5 +51,38 @@ export default tseslint.config(
     languageOptions: {
       globals: globals.node,
     },
+  },
+
+  // Allow SvelteKit's idiomatic empty augmentation interfaces in app.d.ts
+  // (PageData, Error, Locals, Platform are meant to be extended by userland code)
+  {
+    files: ['apps/ear-training-station/src/app.d.ts'],
+    rules: {
+      '@typescript-eslint/no-empty-object-type': 'off',
+    },
+  },
+
+  // Exercise boundary: block cross-exercise internal imports from outside the owning module
+  {
+    files: ['apps/ear-training-station/src/**/*.{ts,svelte}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: ['**/$lib/exercises/*/internal/**', '$lib/exercises/*/internal/**'],
+            message: "Exercise internals are private. Import from the exercise's index.ts (public API).",
+          },
+        ],
+      }],
+    },
+  },
+  // Allow internal imports within the exercise itself and from its public index
+  {
+    files: ['apps/ear-training-station/src/lib/exercises/**/internal/**/*.{ts,svelte}'],
+    rules: { 'no-restricted-imports': 'off' },
+  },
+  {
+    files: ['apps/ear-training-station/src/lib/exercises/*/index.ts'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 );

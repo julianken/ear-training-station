@@ -36,7 +36,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| File | Size | Gzip |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
-          grep -E "^\s*dist/" build-output.txt | while IFS= read -r line; do
+          grep -E "^\s*(dist|\.svelte-kit/output/client)/" build-output.txt | while IFS= read -r line; do
             file=$(echo "$line" | awk '{print $1}')
             size=$(echo "$line" | awk '{print $2, $3}')
             gzip=$(echo "$line" | awk -F'gzip: ' '{print $2}')
