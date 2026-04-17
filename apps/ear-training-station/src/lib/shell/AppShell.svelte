@@ -1,14 +1,15 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import StreakChip from './StreakChip.svelte';
   let { children } = $props();
 </script>
 
 <div class="shell">
   <header class="shell-header">
-    <a class="logo" href="/">Ear Training</a>
+    <a class="logo" href={resolve('/')}>Ear Training</a>
     <nav class="shell-nav">
       <StreakChip />
-      <a class="settings-link" href="/settings" aria-label="Settings">⚙ Settings</a>
+      <a class="settings-link" href={resolve('/settings')} aria-label="Settings">⚙ Settings</a>
     </nav>
   </header>
   <main class="shell-outlet">
