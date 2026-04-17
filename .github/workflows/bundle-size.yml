@@ -1,4 +1,13 @@
 # .github/workflows/bundle-size.yml
+#
+# Budgets set 2026-04-17 based on post-Plan-C1.4 measurement (client output dir,
+# which includes sw.js + workbox-*.js since the PWA plugin emits them there):
+#   client total: 1,319,728 bytes (~1.26 MiB)
+#   sw.js + workbox-*.js combined: 25,231 bytes (~24.6 KiB)
+# Headroom rounded to memorable MiB/KiB boundaries:
+#   BUDGET_CLIENT = 2,097,152 = 2 MiB (~59% over current — generous to cover tfjs/tone growth)
+#   BUDGET_SW     =    51,200 = 50 KiB (~103% over current — generous; SW artifacts are small and stable)
+#
 name: Bundle Size
 
 on:
@@ -36,9 +45,31 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| File | Size | Gzip |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
-          grep -E "^\s*(dist|\.svelte-kit/output/client)/" build-output.txt | while IFS= read -r line; do
+          grep -E "^\s*(dist|\.svelte-kit/output/(client|server))/" build-output.txt | while IFS= read -r line; do
             file=$(echo "$line" | awk '{print $1}')
             size=$(echo "$line" | awk '{print $2, $3}')
             gzip=$(echo "$line" | awk -F'gzip: ' '{print $2}')
             echo "| \`$file\` | $size | $gzip |" >> $GITHUB_STEP_SUMMARY
           done
+
+      - name: Enforce bundle budget
+        run: |
+          BUDGET_CLIENT=2097152   # 2 MiB — client bundle (includes sw.js + workbox-*.js)
+          BUDGET_SW=51200         # 50 KiB — sw.js + workbox-*.js combined
+          CLIENT_DIR="apps/ear-training-station/.svelte-kit/output/client"
+          CLIENT_SIZE=$(du -sb "$CLIENT_DIR" | awk '{print $1}')
+          SW_JS="$CLIENT_DIR/sw.js"
+          SW_SIZE=$(du -cb "$SW_JS" "$CLIENT_DIR"/workbox-*.js 2>/dev/null | tail -1 | awk '{print $1}')
+          SW_SIZE=${SW_SIZE:-0}
+          echo "Client bundle: $CLIENT_SIZE bytes (budget: $BUDGET_CLIENT)"
+          echo "SW artifacts:  $SW_SIZE bytes (budget: $BUDGET_SW)"
+          FAIL=0
+          if [ "$CLIENT_SIZE" -gt "$BUDGET_CLIENT" ]; then
+            echo "::error::Client bundle ${CLIENT_SIZE} bytes exceeds budget of ${BUDGET_CLIENT} bytes (2 MiB)"
+            FAIL=1
+          fi
+          if [ "$SW_SIZE" -gt "$BUDGET_SW" ]; then
+            echo "::error::SW artifacts ${SW_SIZE} bytes exceed budget of ${BUDGET_SW} bytes (50 KiB)"
+            FAIL=1
+          fi
+          exit $FAIL
