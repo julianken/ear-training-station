@@ -8,9 +8,9 @@
     "build": "vite build && rm -rf build/harness",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test": "svelte-kit sync && vitest run",
+    "test:watch": "svelte-kit sync && vitest",
+    "test:e2e": "svelte-kit sync && playwright test"
   },
   "dependencies": {
     "@ear-training/core": "workspace:*",
