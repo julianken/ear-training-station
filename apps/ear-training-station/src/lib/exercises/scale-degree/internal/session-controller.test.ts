@@ -180,7 +180,10 @@ describe('SessionController — next()', () => {
   it('advances to idle with the next due item when more rounds remain', async () => {
     const nextItem: Item = { ...baseItem, id: '1-C-major', degree: 1 };
     const deps = makeDeps();
-    deps.itemsRepo.findDue = vi.fn(async () => [nextItem, baseItem]);
+    // Fixture order matters: baseItem (the just-played item) is first in the
+    // due queue so `dueNow[0]` would return it without the anti-repeat filter.
+    // The filter must skip baseItem and return nextItem.
+    deps.itemsRepo.findDue = vi.fn(async () => [baseItem, nextItem]);
     // Session with 1/30 items completed so far
     const session: Session = { ...baseSession, completed_items: 1, target_items: 30 };
     const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
