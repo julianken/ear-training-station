@@ -1,14 +1,21 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import type { Route } from '$app/paths';
   import { exercises } from '$lib/exercises';
+
+  // Exercise routes are a dynamic extension point — each exercise module
+  // contributes its own route at registration time. SvelteKit's resolve()
+  // expects a literal from the generated RouteId union, which can't cover
+  // future exercises. Cast to the resolve parameter type so the assertion
+  // is honest about what we're doing (narrowing to the function's actual
+  // input type) instead of smuggling in `as any` via a non-existent Route.
+  type ResolveInput = Parameters<typeof resolve>[0];
 </script>
 
 <section class="station-dashboard">
   <h1 class="title">Choose an exercise</h1>
   <div class="grid">
     {#each exercises as ex (ex.manifest.slug)}
-      <a class="card" href={resolve(ex.manifest.route as Route)}>
+      <a class="card" href={resolve(ex.manifest.route as ResolveInput)}>
         <h2 class="card-title">{ex.manifest.name}</h2>
         <p class="card-blurb">{ex.manifest.blurb}</p>
       </a>
