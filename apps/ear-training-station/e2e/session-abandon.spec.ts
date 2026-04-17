@@ -1,39 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { seedOnboarded } from './helpers/app-state';
 
-// Seed a due item so findDue() returns something for the controller.
-async function seedDueItem(page: import('@playwright/test').Page) {
-  await page.addInitScript(() => {
-    return new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('ear-training', 1);
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction('items', 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.objectStore('items').put({
-          id: 'item-c-1',
-          key: { tonic: 'C', quality: 'major' },
-          degree: 1,
-          box: 0,
-          due_at: 0,
-          interval_days: 0,
-          ease: 2.5,
-          streak: 0,
-          reps: 0,
-          last_attempt_id: null,
-          last_at: null,
-          created_at: Date.now() - 86400000,
-        });
-      };
-    });
-  });
-}
-
-test('active session (ended_at null) shows Start Round button in idle state', async ({ page }) => {
+test('active session (ended_at null) is abandoned on navigation and shows summary placeholder', async ({ page }) => {
   await seedOnboarded(page);
-  await seedDueItem(page);
 
   await page.addInitScript(() => {
     return new Promise<void>((resolve, reject) => {
@@ -60,15 +29,8 @@ test('active session (ended_at null) shows Start Round button in idle state', as
 
   await page.goto('/scale-degree/sessions/active-sess-1');
 
-  // ActiveRound renders with a Start Round button when there are due items.
-  await expect(page.getByRole('button', { name: /start round/i })).toBeVisible();
-
-  if (process.env.UPDATE_SCREENSHOTS) {
-    await page.screenshot({
-      path: '../../docs/screenshots/c1-3/task5-active-round/idle.png',
-      fullPage: true,
-    });
-  }
+  // load() performs refresh-abandon: sets ended_at, so the summary placeholder is shown.
+  await expect(page.getByText(/session complete/i)).toBeVisible();
 });
 
 test('completed session shows summary placeholder', async ({ page }) => {
