@@ -57,3 +57,29 @@ describe('pickRegister', () => {
     expect(result).toBe('wide');
   });
 });
+
+describe('pickRegister — available parameter', () => {
+  it('picks only from the available list when provided', () => {
+    const rng = () => 0.5;
+    const history = { lastTimbre: null, lastRegister: null };
+    const settings = { lockedTimbre: null, lockedRegister: null };
+    for (let i = 0; i < 20; i++) {
+      const r = pickRegister(rng, history, settings, ['comfortable']);
+      expect(r).toBe('comfortable');
+    }
+  });
+
+  it('respects lockedRegister when it appears in the available list', () => {
+    const rng = () => 0.5;
+    const history = { lastTimbre: null, lastRegister: null };
+    const settings = { lockedTimbre: null, lockedRegister: 'narrow' as const };
+    expect(pickRegister(rng, history, settings, ['comfortable', 'narrow'])).toBe('narrow');
+  });
+
+  it('ignores lockedRegister when it is NOT in the available list', () => {
+    const rng = () => 0.5;
+    const history = { lastTimbre: null, lastRegister: null };
+    const settings = { lockedTimbre: null, lockedRegister: 'wide' as const };
+    expect(pickRegister(rng, history, settings, ['comfortable'])).toBe('comfortable');
+  });
+});
