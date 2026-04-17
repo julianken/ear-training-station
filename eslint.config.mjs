@@ -20,9 +20,21 @@ export default tseslint.config(
   // Svelte support (activates only on .svelte files)
   ...svelte.configs['flat/recommended'],
 
-  // Svelte + TypeScript integration
+  // Svelte + TypeScript integration (*.svelte files)
   {
     files: ['**/*.svelte'],
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser,
+      },
+    },
+  },
+
+  // Svelte 5 runes in *.svelte.ts files — svelte.configs['flat/recommended'] already sets
+  // svelte-eslint-parser as the outer parser for these files; we only need to configure
+  // the inner TypeScript parser so $state/$derived/$effect are understood.
+  {
+    files: ['**/*.svelte.ts'],
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,

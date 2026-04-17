@@ -43,15 +43,17 @@ apps/**, CSS/tokens affecting rendering, any route). Otherwise write "N/A — no
 Headless workflow for subagent-generated PRs: capture via Playwright in the task's
 e2e spec, save under docs/screenshots/c1-<N>/taskN-<slug>/<description>.png,
 commit with the PR, then reference the file using an ABSOLUTE raw.githubusercontent
-URL with the branch interpolated at PR-creation time. Relative paths like
+URL with the commit SHA captured at PR-creation time. Relative paths like
 ../../docs/... do NOT work in PR bodies — GitHub resolves them against /pull/N/,
-not the repo root (see github/markup#576). The raw URL form works for both
-in-review PRs (pointing at the PR branch) and post-merge viewers.
+not the repo root (see github/markup#576). The SHA-based URL form works for both
+in-review PRs (commit exists on the PR branch) and post-merge viewers (commit
+persists in git history). The SHA-based URL survives squash-merge + branch
+deletion; the branch-based URL does not.
 
 Pattern (inside a subagent bash HEREDOC):
 
-    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    gh pr create --body "... ![feedback on pass](https://raw.githubusercontent.com/julianken/ear-training-station/$BRANCH/docs/screenshots/c1-3/task7-feedback-panel/pass-state.png) ..."
+    SHA=$(git rev-parse HEAD)
+    gh pr create --body "... ![feedback on pass](https://raw.githubusercontent.com/julianken/ear-training-station/${SHA}/docs/screenshots/c1-3/task7-feedback-panel/pass-state.png) ..."
 
 Human-authored PRs can drag-and-drop the image directly into the comment box —
 GitHub uploads it and inserts a working link. -->
