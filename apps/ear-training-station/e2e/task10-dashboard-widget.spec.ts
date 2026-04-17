@@ -2,8 +2,8 @@
  * Screenshot capture for Task 10 — DashboardWidget on the station picker card.
  * Seeds items across all Leitner boxes so the counts are non-trivial.
  */
-import { test } from '@playwright/test';
-import type { Page, BrowserContext } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 async function seedWithItems(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -100,8 +100,13 @@ test('station picker shows DashboardWidget with Leitner counts', async ({ page }
   // Wait for the card to appear
   await page.waitForSelector('.card', { timeout: 5000 });
 
-  await page.screenshot({
-    path: '../../docs/screenshots/c1-3/task10-dashboard-widget/station.png',
-    fullPage: true,
-  });
+  await expect(page.locator('.station-dashboard .card')).toBeVisible();
+  await expect(page.locator('.station-dashboard .card .stat')).toHaveCount(3);
+
+  if (process.env.UPDATE_SCREENSHOTS) {
+    await page.screenshot({
+      path: '../../docs/screenshots/c1-3/task10-dashboard-widget/station.png',
+      fullPage: true,
+    });
+  }
 });
