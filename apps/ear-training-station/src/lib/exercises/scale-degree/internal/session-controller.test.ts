@@ -65,3 +65,68 @@ describe('SessionController', () => {
     expect(() => ctrl.dispose()).not.toThrow();
   });
 });
+
+describe('SessionController — capture-end + CAPTURE_COMPLETE', () => {
+  it('auto-advances to graded when pitch + digit both confident (auto_advance_on_hit = true)', () => {
+    // This is a behavioral test; the mechanism is internal. We validate it
+    // by forcing a listening state with confident frames + digit and waiting
+    // for the state to flip to graded.
+    const ctrl = createSessionController(makeDeps());
+    ctrl._forceState({
+      kind: 'listening',
+      item: baseItem, timbre: 'piano', register: 'comfortable',
+      targetStartedAt: 0,
+      frames: [{ at_ms: 100, hz: 392, confidence: 0.95 }],
+      digit: 5,
+      digitConfidence: 0.9,
+    } as never);
+    // Manually invoke the capture-end check (Task 6 exposes _checkCaptureEnd test hook)
+    ctrl._checkCaptureEnd();
+    expect(ctrl.state.kind).toBe('graded');
+  });
+
+  it('does not auto-advance if confidence is below threshold', () => {
+    const ctrl = createSessionController(makeDeps());
+    ctrl._forceState({
+      kind: 'listening',
+      item: baseItem, timbre: 'piano', register: 'comfortable',
+      targetStartedAt: 0,
+      frames: [{ at_ms: 100, hz: 392, confidence: 0.3 }],
+      digit: 5,
+      digitConfidence: 0.3,
+    } as never);
+    ctrl._checkCaptureEnd();
+    expect(ctrl.state.kind).toBe('listening');
+  });
+
+  it('clears the capture-end timer when auto-advancing to graded', () => {
+    vi.useFakeTimers();
+    try {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+      const ctrl = createSessionController(makeDeps());
+
+      // Plant a fake timer id to simulate a pending capture-end setTimeout
+      const fakeTimerId = setTimeout(() => {}, 5000);
+      ctrl._forceTimer(fakeTimerId as unknown as number);
+
+      // Force into a listening state that will produce a passing grade
+      ctrl._forceState({
+        kind: 'listening',
+        item: baseItem, timbre: 'piano', register: 'comfortable',
+        targetStartedAt: 0,
+        frames: [{ at_ms: 100, hz: 392, confidence: 0.95 }],
+        digit: 5,
+        digitConfidence: 0.9,
+      } as never);
+
+      ctrl._checkCaptureEnd();
+
+      expect(ctrl.state.kind).toBe('graded');
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(fakeTimerId);
+    } finally {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    }
+  });
+});

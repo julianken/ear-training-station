@@ -3,6 +3,7 @@
   import { getDeps } from '$lib/shell/deps';
   import { onDestroy, onMount } from 'svelte';
   import { resolve } from '$app/paths';
+  import { dev } from '$app/environment';
 
   let { data } = $props();
 
@@ -33,6 +34,11 @@
         return handle.stream;
       },
     });
+
+    if (dev || import.meta.env.MODE === 'test') {
+      // @ts-expect-error e2e hook — not present in production bundles
+      window.__sessionControllerForTest = controller;
+    }
   });
 
   onDestroy(() => controller?.dispose());
