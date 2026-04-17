@@ -53,6 +53,9 @@ export interface SessionController {
   /** @internal — test hook: set the running pitch/label pass counters directly,
    *  to simulate the effect of persistence having run during _forceState tests */
   _forceRunningCounters(pitch: number, label: number): void;
+  /** @internal — test hook: read the current running pitch/label pass counters
+   *  and roundIndex to verify consistency after persistence failures */
+  _getRunningCounters(): { pitch: number; label: number; roundIndex: number };
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
@@ -140,13 +143,19 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         try {
           await deps.attemptsRepo.append(attempt);
           await deps.itemsRepo.put(updatedItem);
-        } catch { /* IO error — log or degrade gracefully later */ }
-
-        // Update running counters
-        this.#reviewsInBox.set(item.id, reviewsInCurrentBox);
-        this.#roundIndex++;
-        if (pitchOk) this.#pitchPasses++;
-        if (labelOk) this.#labelPasses++;
+          // Update running counters only after both writes succeed — keeps
+          // controller state consistent with the DB on partial failure.
+          this.#reviewsInBox.set(item.id, reviewsInCurrentBox);
+          this.#roundIndex++;
+          if (pitchOk) this.#pitchPasses++;
+          if (labelOk) this.#labelPasses++;
+        } catch (e) {
+          // Persistence failed — leave counters at pre-round values so controller
+          // state stays consistent with the DB. A future C1.4 task will surface this
+          // to a shell-level degradation banner / toast.
+          // TODO(c1.4): surface persistence failure to the UI
+          console.error('session-controller: persistence failed, round not counted', e);
+        }
       }
 
       this.#onStateChange();
@@ -360,6 +369,10 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     _forceRunningCounters(pitch: number, label: number): void {
       this.#pitchPasses = pitch;
       this.#labelPasses = label;
+    }
+
+    _getRunningCounters(): { pitch: number; label: number; roundIndex: number } {
+      return { pitch: this.#pitchPasses, label: this.#labelPasses, roundIndex: this.#roundIndex };
     }
   }
 

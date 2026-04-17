@@ -368,6 +368,67 @@ describe('SessionController — attempt persistence on graded transition', () =>
   });
 });
 
+describe('SessionController — persistence failure counter consistency', () => {
+  // Helper shared with the persistence suite above.
+  function setupListening(ctrl: ReturnType<typeof createSessionController>) {
+    ctrl._forceState({
+      kind: 'listening',
+      item: baseItem,
+      timbre: 'piano',
+      register: 'comfortable',
+      targetStartedAt: 0,
+      frames: [{ at_ms: 100, hz: 392, confidence: 0.95 }],
+      digit: 5,
+      digitConfidence: 0.9,
+    } as never);
+  }
+
+  it('does not advance counters when itemsRepo.put rejects', async () => {
+    const deps = makeDeps();
+    // append succeeds; put fails — simulates quota-exceeded on the second write.
+    deps.itemsRepo.put = vi.fn(async () => { throw new Error('quota exceeded'); });
+    const ctrl = createSessionController(deps);
+
+    // Verify counters start at the session baseline.
+    expect(ctrl._getRunningCounters()).toEqual({ pitch: 0, label: 0, roundIndex: 0 });
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    // Flush all async microtasks so the try/catch inside #dispatch completes.
+    await flushPromises();
+
+    // append was called (partial failure path confirmed).
+    expect(deps.attemptsRepo.append).toHaveBeenCalledOnce();
+    // put threw — counters must remain at pre-round values.
+    expect(ctrl._getRunningCounters()).toEqual({ pitch: 0, label: 0, roundIndex: 0 });
+  });
+
+  it('does not advance counters when attemptsRepo.append rejects', async () => {
+    const deps = makeDeps();
+    deps.attemptsRepo.append = vi.fn(async () => { throw new Error('db closed'); });
+    const ctrl = createSessionController(deps);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    expect(deps.itemsRepo.put).not.toHaveBeenCalled();
+    expect(ctrl._getRunningCounters()).toEqual({ pitch: 0, label: 0, roundIndex: 0 });
+  });
+
+  it('advances counters normally when both writes succeed', async () => {
+    const deps = makeDeps();
+    const ctrl = createSessionController(deps);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    // pitch and label both pass (hz≈392 = G4 = degree 5 of C major; digit=5).
+    expect(ctrl._getRunningCounters()).toEqual({ pitch: 1, label: 1, roundIndex: 1 });
+  });
+});
+
 describe('SessionController — consecutiveNullCount store', () => {
   beforeEach(() => {
     // Reset store between tests to avoid leakage.
