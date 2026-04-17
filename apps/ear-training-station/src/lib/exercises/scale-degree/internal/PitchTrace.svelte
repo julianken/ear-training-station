@@ -50,10 +50,11 @@
     return HEIGHT - frac * HEIGHT;
   }
 
-  // v1 visualization: plot sung pitch at the target-degree Y.
-  // The target band covers ±50¢ around the target, so deviations within that
-  // range visually "match". Richer rendering (actual degree from mapHzToDegree)
-  // is a future iteration. For MVP, band + on-band line conveys pass/fail.
+  // v1 visualization: plot confident sung frames at the target-degree Y.
+  // This conveys "we're hearing something" inside the match band but does NOT
+  // distinguish in-tune from out-of-tune — for any confident capture, the line
+  // sits on the band's centerline. Task 5/7 will wire mapHzToDegree so the
+  // polyline actually rises/falls off the band when pitch drifts sharp/flat.
   function hzToVisualDegree(hz: number): number {
     if (hz <= 0) return targetDegree;
     return targetDegree;
