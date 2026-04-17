@@ -1,10 +1,5 @@
-<section>
-  <h1>Station dashboard</h1>
-  <p>Task 3 replaces this with the real exercise picker.</p>
-</section>
+<script lang="ts">
+  import StationDashboard from '$lib/shell/StationDashboard.svelte';
+</script>
 
-<style>
-  section { max-width: 600px; margin: 0 auto; }
-  h1 { font-size: 16px; font-weight: 600; margin: 0 0 8px; }
-  p { font-size: 12px; color: var(--muted); margin: 0; }
-</style>
+<StationDashboard />
