@@ -1,7 +1,7 @@
 import { roundReducer } from '@ear-training/core/round/state';
 import type { RoundState } from '@ear-training/core/round/state';
 import type { RoundEvent } from '@ear-training/core/round/events';
-import type { Item, Session } from '@ear-training/core/types/domain';
+import type { Item, Session, Register } from '@ear-training/core/types/domain';
 import type {
   ItemsRepo, AttemptsRepo, SessionsRepo, SettingsRepo,
 } from '@ear-training/core/repos/interfaces';
@@ -10,7 +10,7 @@ import type { PitchDetectorHandle } from '@ear-training/web-platform/pitch/pitch
 import type { KeywordSpotterHandle } from '@ear-training/web-platform/speech/keyword-spotter';
 import type { RecorderHandle } from '@ear-training/web-platform/mic/recorder';
 import { gradeListeningState } from '@ear-training/core/round/grade-listening';
-import { pickTimbre, pickRegister, type VariabilityHistory } from '@ear-training/core/variability/pickers';
+import { pickTimbre, pickRegister, type VariabilityHistory, type TimbreId } from '@ear-training/core/variability/pickers';
 import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
 
 export interface SessionControllerDeps {
@@ -42,6 +42,8 @@ export interface SessionController {
   _forceTimer(id: number): void;
   /** @internal — test hook */
   _checkCaptureEnd(): void;
+  /** @internal — test hook for variability picker integration */
+  _pickVariability(items: ReadonlyArray<Item>): { timbre: TimbreId; register: Register };
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
@@ -113,11 +115,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       const stream = await deps.getMicStream();
 
       // Pick timbre and register via variability pickers (no monoculture)
-      const variabilitySettings = { lockedTimbre: null, lockedRegister: null };
       const allItems = await deps.itemsRepo.listAll();
-      const available = availableRegisters(allItems);
-      const timbre = pickTimbre(this.#rng, this.#history, variabilitySettings);
-      const register = pickRegister(this.#rng, this.#history, variabilitySettings, available);
+      const { timbre, register } = this._pickVariability(allItems);
 
       // Dispatch ROUND_STARTED synthetically
       void this.#dispatch({
@@ -127,9 +126,6 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         timbre,
         register,
       });
-
-      // Persist history for next round (anti-repeat)
-      this.#history = { lastTimbre: timbre, lastRegister: register };
 
       // Lazy-load the audio handles (web-platform modules)
       const { playRound } = await import('@ear-training/web-platform/audio/player');
@@ -217,7 +213,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
       // More items due — advance.
       const dueNow = await deps.itemsRepo.findDue(Date.now());
-      const next = dueNow.find((i) => i.id !== sessionRow.focus_item_id) ?? dueNow[0] ?? null;
+      const justPlayed = this.currentItem?.id;
+      const next = dueNow.find((i) => i.id !== justPlayed) ?? dueNow[0] ?? null;
       if (next == null) {
         // Unusual: target_items says more to go but the queue is empty. Persist completion anyway.
         await deps.sessionsRepo.complete(sessionRow.id, {
@@ -260,6 +257,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       this.#pitchHandle = null;
       this.#kwsHandle = null;
       this.#recorderHandle = null;
+    }
+
+    _pickVariability(items: ReadonlyArray<Item>): { timbre: TimbreId; register: Register } {
+      const variabilitySettings = { lockedTimbre: null, lockedRegister: null };
+      const available = availableRegisters(items);
+      const timbre = pickTimbre(this.#rng, this.#history, variabilitySettings);
+      const register = pickRegister(this.#rng, this.#history, variabilitySettings, available);
+      this.#history = { lastTimbre: timbre, lastRegister: register };
+      return { timbre, register };
     }
 
     _forceState(state: RoundState): void {

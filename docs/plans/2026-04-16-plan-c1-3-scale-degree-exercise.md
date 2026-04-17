@@ -1530,47 +1530,34 @@ Append to `session-controller.test.ts`:
 
 ```typescript
 describe('SessionController — variability picker wiring', () => {
-  it('avoids repeating the previous timbre across rounds', async () => {
-    // Seed rng = () => 0 (always picks index 0 of the filtered pool).
-    // With lastTimbre = 'piano', pool excludes 'piano', so pool[0] = 'epiano'.
-    // We verify the controller accepts the rng dep without error.
-    const rng = vi.fn(() => 0);
-    const deps = { ...makeDeps(), rng };
-    const ctrl = createSessionController(deps);
-    expect(ctrl.state.kind).toBe('idle');
+  it('avoids repeating the previous timbre across rounds', () => {
+    // rng = () => 0 always picks index 0 of the filtered pool.
+    // TIMBRE_IDS = ['piano', 'epiano', 'guitar', 'pad'].
+    // First call: lastTimbre = null → full pool → pool[0] = 'piano'.
+    // Second call: lastTimbre = 'piano' → pool excludes 'piano' → pool[0] = 'epiano'.
+    const rng = () => 0;
+    const ctrl = createSessionController({ ...makeDeps(), rng });
+    const first = ctrl._pickVariability([]);
+    const second = ctrl._pickVariability([]);
+    expect(first.timbre).toBe('piano');
+    expect(second.timbre).not.toBe(first.timbre);
   });
 
-  it('passes listAll() result to availableRegisters for register gating', async () => {
-    // listAll must exist on the itemsRepo dep and be callable.
-    const deps = makeDeps();
-    const ctrl = createSessionController({ ...deps, rng: () => 0 });
-    expect(ctrl.state.kind).toBe('idle');
-    expect(typeof deps.itemsRepo.listAll).toBe('function');
-  });
-});
-
-describe('SessionController — next()', () => {
-  it('is a no-op when not in graded state', async () => {
-    const ctrl = createSessionController(makeDeps());
-    await expect(ctrl.next()).resolves.toBeUndefined();
-    expect(ctrl.state.kind).toBe('idle');
-  });
-
-  it('advances to idle with the next due item when more rounds remain', async () => {
-    // Given a graded state and more items due, next() sets state to idle
-    // with the next item and increments completed_items.
-    // ...
-  });
-
-  it('completes the session when target_items is reached', async () => {
-    // Given completed_items === target_items - 1 (about to hit target),
-    // next() calls sessionsRepo.complete and sets ended_at.
-    // ...
+  it('returns only comfortable register when no advanced items are present', () => {
+    // availableRegisters([]) = ['comfortable']; narrow/wide need advanced items.
+    const rng = () => 0;
+    const ctrl = createSessionController({ ...makeDeps(), rng });
+    const first = ctrl._pickVariability([]);
+    expect(first.register).toBe('comfortable');
   });
 });
 ```
 
-(The subagent writes the full test bodies using the existing `makeDeps()` / `_forceState()` scaffolding already in the file.)
+`_pickVariability` is a `@internal` test hook on the `SessionController` interface (added in Step 3).
+It inlines the picker logic and mutates `#history`, so calling it twice with `rng = () => 0`
+verifies the anti-repeat filter without invoking `startRound()` or any dynamic imports.
+
+(Full test bodies for `next()` use the existing `makeDeps()` / `_forceState()` scaffolding.)
 
 - [ ] **Step 3: Wire `VariabilityHistory` into the controller**
 
@@ -1625,7 +1612,8 @@ async next(): Promise<void> {
 
   // More items due — advance.
   const dueNow = await deps.itemsRepo.findDue(Date.now());
-  const next = dueNow.find((i) => i.id !== sessionRow.focus_item_id) ?? dueNow[0] ?? null;
+  const justPlayed = this.currentItem?.id;
+  const next = dueNow.find((i) => i.id !== justPlayed) ?? dueNow[0] ?? null;
   if (next == null) {
     // Unusual: target_items says more to go but the queue is empty. Persist completion anyway.
     await deps.sessionsRepo.complete(sessionRow.id, {
@@ -1726,8 +1714,9 @@ export function tooltipFor(degree: Degree, quality: 'major' | 'minor'): string {
 Create `apps/ear-training-station/src/lib/exercises/scale-degree/internal/FeedbackPanel.test.ts`:
 
 ```typescript
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
+import userEvent from '@testing-library/user-event';
 import FeedbackPanel from './FeedbackPanel.svelte';
 
 const graded = {
@@ -1768,6 +1757,13 @@ describe('FeedbackPanel', () => {
       showTooltip: false,
     });
     expect(screen.getByText(/you sang 5 but said 4/i)).toBeInTheDocument();
+  });
+
+  it('clicking Next round button fires onNext', async () => {
+    const onNext = vi.fn();
+    render(FeedbackPanel, { state: graded, showTooltip: false, onNext });
+    await userEvent.click(screen.getByRole('button', { name: /next round/i }));
+    expect(onNext).toHaveBeenCalledOnce();
   });
 });
 ```
@@ -1812,9 +1808,11 @@ Create `apps/ear-training-station/src/lib/exercises/scale-degree/internal/Feedba
   let {
     state,
     showTooltip,
+    onNext,
   }: {
     state: Extract<RoundState, { kind: 'graded' }>;
     showTooltip: boolean;
+    onNext?: () => void;
   } = $props();
 
   const targetDegree = state.item.degree;
@@ -1907,7 +1905,11 @@ Modify the `{#if}` block in the route page:
 {#if data.session.ended_at == null && controller}
   <ActiveRound {controller} />
   {#if controller.state.kind === 'graded'}
-    <FeedbackPanel state={controller.state} showTooltip={$settings.function_tooltip} />
+    <FeedbackPanel
+      state={controller.state}
+      showTooltip={$settings.function_tooltip}
+      onNext={() => { void controller.next().then(() => controller.startRound()); }}
+    />
     <!-- ReplayBar mounts in Task 8 -->
   {/if}
 {:else if data.session.ended_at != null}

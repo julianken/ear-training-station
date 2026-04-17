@@ -147,45 +147,25 @@ const gradedState: RoundState = {
 
 describe('SessionController — variability picker wiring', () => {
   it('avoids repeating the previous timbre across rounds', () => {
-    // With a deterministic rng biased to index 0, and lastTimbre = 'piano',
-    // pickTimbre should never return 'piano' (it is excluded from the pool).
-    // We seed rng = () => 0 which always picks pool[0]. The pool excludes
-    // lastTimbre, so two consecutive startRound() calls should differ.
-    //
-    // Because startRound() calls web-platform dynamic imports (which aren't
-    // available in vitest), we can only test the public surface via the
-    // dep-injectable rng. We verify that the controller accepts the rng dep
-    // and that pickTimbre/pickRegister are exercised by confirming the history
-    // field causes the timbre in ROUND_STARTED to avoid the previous value.
-    //
-    // Strategy: use rng = () => 0 (picks index 0 of the filtered pool).
-    // With lastTimbre = null → first available = 'piano' (TIMBRE_IDS[0]).
-    // With lastTimbre = 'piano' → pool excludes 'piano', so pool[0] = 'epiano'.
-    // We test this indirectly by checking that the controller does not throw
-    // and that it accepts the rng dep in SessionControllerDeps.
-    const rng = vi.fn(() => 0);
-    const deps = { ...makeDeps(), rng };
-    const ctrl = createSessionController(deps);
-    expect(ctrl.state.kind).toBe('idle');
-    // The dep is accepted and the controller is created without error.
-    // Full timbre-sequence verification is done in the variability/pickers unit tests.
+    // rng = () => 0 always picks index 0 of the filtered pool.
+    // TIMBRE_IDS = ['piano', 'epiano', 'guitar', 'pad'].
+    // First call: lastTimbre = null → full pool → pool[0] = 'piano'.
+    // Second call: lastTimbre = 'piano' → pool excludes 'piano' → pool[0] = 'epiano'.
+    const rng = () => 0;
+    const ctrl = createSessionController({ ...makeDeps(), rng });
+    const first = ctrl._pickVariability([]);
+    const second = ctrl._pickVariability([]);
+    expect(first.timbre).toBe('piano');
+    expect(second.timbre).not.toBe(first.timbre);
   });
 
-  it('passes listAll() result to availableRegisters for register gating', async () => {
-    // Items in 'reviewing'/'mastered' boxes unlock narrow + wide registers.
-    // With no advanced items, only 'comfortable' is available.
-    // We assert that listAll is called during startRound() — implicitly tested
-    // by verifying the mock is invoked.
-    //
-    // startRound() requires audio handles which aren't available in vitest;
-    // test calls are intentionally not awaited here — we only confirm the dep
-    // shape is wired.  The full integration path is covered by the e2e harness.
-    const deps = makeDeps();
+  it('returns only comfortable register when no advanced items are present', () => {
+    // availableRegisters([]) = ['comfortable'] (narrow/wide need advanced items).
+    // So both calls return 'comfortable' regardless of anti-repeat (pool size = 1).
     const rng = () => 0;
-    const ctrl = createSessionController({ ...deps, rng });
-    expect(ctrl.state.kind).toBe('idle');
-    // listAll is present on itemsRepo mock with a valid return type.
-    expect(typeof deps.itemsRepo.listAll).toBe('function');
+    const ctrl = createSessionController({ ...makeDeps(), rng });
+    const first = ctrl._pickVariability([]);
+    expect(first.register).toBe('comfortable');
   });
 });
 
