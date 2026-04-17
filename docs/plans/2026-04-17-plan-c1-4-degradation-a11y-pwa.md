@@ -467,6 +467,8 @@ The session route's refresh-abandon (`+page.ts:14-21`) marks any `ended_at == nu
 
 Introduce a narrow escape hatch: an opt-in `?preview=mic-denied` query param that, when present, skips the refresh-abandon in `+page.ts` AND forces `micDenied = true` in `+page.svelte`. The flag is dev/e2e-only; gate it behind `if (dev || import.meta.env.MODE === 'test')` to prevent production leakage (same pattern as the `window.__sessionControllerForTest` hook in PR #83).
 
+Use `addInitScript` for the session seed, following the existing `round-graded.spec.ts:14-50` pattern. `page.evaluate` cannot be used here — `seedOnboarded`'s init script hasn't fired yet at evaluate-time (it fires on navigation), so the IDB schema doesn't exist and `transaction('sessions', ...)` would throw `NotFoundError`. `addInitScript` handlers run in registration order at navigation time, so the schema is ready by the time our seed runs.
+
 ```typescript
 // e2e/mic-denied.spec.ts
 import { test, expect } from '@playwright/test';
@@ -475,17 +477,16 @@ import { seedOnboarded } from './helpers/app-state';
 test('denied mic renders the MicDeniedGate', async ({ page, context }) => {
   await context.clearPermissions();
   await seedOnboarded(page);
-  // Seed a session row via page.evaluate (sync IDB, unlike addInitScript)
-  await page.evaluate(async () => {
+  await page.addInitScript(() => {
     const req = indexedDB.open('ear-training', 1);
-    await new Promise((resolve) => { req.onsuccess = resolve; });
-    const tx = req.result.transaction('sessions', 'readwrite');
-    tx.objectStore('sessions').put({
-      id: 'sess-mic-denied', started_at: Date.now(), ended_at: null,
-      target_items: 30, completed_items: 0,
-      pitch_pass_count: 0, label_pass_count: 0, focus_item_id: null,
-    });
-    await new Promise((resolve) => { tx.oncomplete = resolve; });
+    req.onsuccess = () => {
+      const tx = req.result.transaction('sessions', 'readwrite');
+      tx.objectStore('sessions').put({
+        id: 'sess-mic-denied', started_at: Date.now(), ended_at: null,
+        target_items: 30, completed_items: 0,
+        pitch_pass_count: 0, label_pass_count: 0, focus_item_id: null,
+      });
+    };
   });
   await page.goto('/scale-degree/sessions/sess-mic-denied?preview=mic-denied');
   await expect(page.getByRole('heading', { name: /microphone access required/i })).toBeVisible();
@@ -689,7 +690,9 @@ From PR #86 (FeedbackPanel + consecutiveNullCount):
 - Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/FeedbackPanel.svelte` — `cents_off === 0` currently renders as "0¢ sharp" (the sign-based direction logic treats `>= 0` as sharp). Handle zero explicitly as `"in tune"` or a neutral string.
 
 From PR #88 (test-hook production bundle leakage):
-- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.svelte.ts` — extract `_forceState` / `_forceTimer` / `_forceRunningCounters` / `_getRunningCounters` / `_onPitchFrame` / `_checkCaptureEnd` behind a dev-only guard (e.g., conditionally attached only when `import.meta.env.MODE !== 'production'`). Keeps ~80+ bytes out of prod bundles.
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.svelte.ts` — extract the four TRUE test-only hooks (`_forceState`, `_forceTimer`, `_forceRunningCounters`, `_getRunningCounters`) behind a dev-only guard (e.g., conditionally attached only when `import.meta.env.MODE !== 'production'`). Keeps ~80+ bytes out of prod bundles.
+
+**Critically, do NOT gate `_onPitchFrame` or `_checkCaptureEnd`** even though they share the `_`-prefix convention. These two are called from the production capture pipeline — `#onStateChange` invokes `_checkCaptureEnd` on every listening-state transition (`session-controller.svelte.ts:175`), and `_onPitchFrame` is the hot path for the pitch-handle subscription (`:225`). Gating them would silently stop grading rounds and dispatching pitch frames in production. Optionally rename those two to drop the misleading `_` prefix so their semantics match the naming convention; this is polish, not required for correctness.
 
 From PR #90 (DashboardWidget):
 - Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/DashboardWidget.svelte` — include the `new` Leitner box count as a fourth stat (muted color). Fresh users currently see "0 mastered / 0 reviewing / 0 learning" even with a full starter curriculum queued.
