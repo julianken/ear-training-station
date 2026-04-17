@@ -9,7 +9,7 @@ describe('PitchTrace', () => {
       targetDegree: 5,
       windowStartMs: 0,
       windowDurationMs: 5000,
-      getCurrentTime: () => 0,
+      getNowMs: () => 0,
     });
     expect(container.querySelector('svg')).toBeTruthy();
     expect(container.querySelector('.target-band')).toBeTruthy();
@@ -26,7 +26,7 @@ describe('PitchTrace', () => {
       targetDegree: 5,
       windowStartMs: 0,
       windowDurationMs: 5000,
-      getCurrentTime: () => 0,
+      getNowMs: () => 0,
     });
     const polyline = container.querySelector('polyline.sung');
     const pointsAttr = polyline?.getAttribute('points') ?? '';
@@ -43,7 +43,7 @@ describe('PitchTrace', () => {
       targetDegree: 5,
       windowStartMs: 0,
       windowDurationMs: 5000,
-      getCurrentTime: () => 0,
+      getNowMs: () => 0,
     });
     const polyline = container.querySelector('polyline.sung');
     const pointsAttr = polyline?.getAttribute('points') ?? '';

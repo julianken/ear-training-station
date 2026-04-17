@@ -13,20 +13,28 @@
     targetDegree,
     windowStartMs,
     windowDurationMs,
-    getCurrentTime,
+    getNowMs,
   }: {
     frames: PitchObservation[];
     targetDegree: Degree;
+    /** Wall-clock ms (same domain as `frames[i].at_ms` — i.e. `Date.now()`-style). */
     windowStartMs: number;
     windowDurationMs: number;
-    getCurrentTime: () => number;
+    /**
+     * Returns the current time in the SAME domain as `windowStartMs` and frame
+     * `at_ms` (i.e. wall-clock ms — typically `Date.now()`). If the parent is
+     * sourcing from an AudioContext, it must convert: multiply seconds by 1000
+     * and add the wall-clock offset captured when the context's clock was
+     * anchored. Mixing AC-seconds with wall-clock ms strands the "now" cursor.
+     */
+    getNowMs: () => number;
   } = $props();
 
-  let now = $state(getCurrentTime());
+  let nowMs = $state(getNowMs());
   let rafId: number | null = null;
 
   function tick() {
-    now = getCurrentTime();
+    nowMs = getNowMs();
     rafId = requestAnimationFrame(tick);
   }
   onMount(() => { rafId = requestAnimationFrame(tick); });
@@ -60,7 +68,7 @@
 
   const bandY = $derived(degreeToY(targetDegree) - (HEIGHT * BAND_HEIGHT_FRAC) / 2);
   const bandH = HEIGHT * BAND_HEIGHT_FRAC;
-  const nowX = $derived(timeToX(now * 1000));
+  const nowX = $derived(timeToX(nowMs));
 </script>
 
 <svg class="pitch-trace" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" height={HEIGHT}>
