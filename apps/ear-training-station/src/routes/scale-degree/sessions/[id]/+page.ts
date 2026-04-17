@@ -16,8 +16,13 @@ export async function load({ params, url }) {
     url.searchParams.get('preview') === 'mic-denied' &&
     (dev || import.meta.env.MODE === 'test');
 
-  if (session.ended_at == null && !bypassAbandon) {
-    // Refresh-abandon: roll up whatever attempts exist, mark complete.
+  // Refresh-abandon only fires on actual browser reloads (F5 / reload button) of an
+  // ongoing session. Fresh SPA navigations from the dashboard do NOT abandon — the
+  // session was just created. Detected via the Navigation Timing API.
+  const isReload = typeof performance !== 'undefined'
+    && (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload';
+
+  if (session.ended_at == null && isReload && !bypassAbandon) {
     const attempts = await deps.attempts.findBySession(session.id);
     const rollup = rollUpAbandonedSession(attempts);
     await deps.sessions.complete(session.id, rollup);

@@ -4,9 +4,10 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { onMount, onDestroy } from 'svelte';
-  import { settings } from '$lib/shell/stores';
+  import { settings, allItems } from '$lib/shell/stores';
   import type { Item } from '@ear-training/core/types/domain';
   import type { SessionController } from '$lib/exercises/scale-degree';
+  import { buildInitialItems } from '@ear-training/core/seed/initial-items';
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -53,6 +54,16 @@
       await controller.next(); // completes the session since target_items === 1
     }
     const deps = await getDeps();
+    // Seed the starter curriculum for the user's first real session. The warmup round
+    // persists one item (5-C-major); without this, findDue() would return only that one
+    // item and every round would hit the same target.
+    const existing = await deps.items.listAll();
+    const existingIds = new Set(existing.map((it) => it.id));
+    const seeds = buildInitialItems({ now: Date.now() }).filter((s) => !existingIds.has(s.id));
+    if (seeds.length > 0) {
+      await deps.items.putMany(seeds);
+      allItems.set([...existing, ...seeds]);
+    }
     await deps.settings.update({ onboarded: true });
     settings.update((s) => ({ ...s, onboarded: true }));
     await goto(resolve('/scale-degree'));
