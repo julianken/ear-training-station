@@ -16,7 +16,7 @@
 
 **PR body requirements — screenshots + mermaid for UI tasks:** every PR in Tasks 1–3 (MicDeniedGate, DegradationBanner, ShellToast) MUST include at least one screenshot referenced in the PR body showing the component in its triggered state. Task 4 (service worker) should include a mermaid flowchart of the cache strategy (precache flow + runtime-cache flow for the KWS model). Task 5 (axe a11y) and Task 6 (bundle budget) ship text-only PRs — screenshots not required, but mermaid diagrams welcome if they clarify flows. Task 7 (small config cleanup) is text-only.
 
-**Headless-friendly screenshot workflow for implementer subagents:** capture from a Playwright script (reusing the task's own e2e spec), save to `docs/screenshots/c1-4/taskN-<slug>/<description>.png`, commit with the PR, and reference it in the PR body using an ABSOLUTE `raw.githubusercontent.com` URL with the branch interpolated at PR-creation time. Relative paths like `../../docs/...` do **not** work in PR bodies (GitHub resolves them against `/pull/N/`, not the repo root); the raw URL form works for both in-review PRs and post-merge viewers.
+**Headless-friendly screenshot workflow for implementer subagents:** capture from a Playwright script (reusing the task's own e2e spec), save to `docs/screenshots/c1-4/taskN-<slug>/<description>.png`, commit with the PR, and reference it in the PR body using an ABSOLUTE `raw.githubusercontent.com` URL with the commit SHA captured at PR-creation time. Relative paths like `../../docs/...` do **not** work in PR bodies (GitHub resolves them against `/pull/N/`, not the repo root); the SHA-based URL form works for both in-review PRs (commit exists on the PR branch) and post-merge viewers (commit persists in git history). The SHA-based URL survives squash-merge + branch deletion; the branch-based URL does not.
 
 Example for Task 1:
 
@@ -28,9 +28,9 @@ await page.screenshot({ path: 'docs/screenshots/c1-4/task1-mic-denied-gate/denie
 And in the PR-creation step:
 
 ```bash
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
+SHA=$(git rev-parse HEAD)
 gh pr create --body "...
-![mic denied gate](https://raw.githubusercontent.com/julianken/ear-training-station/$BRANCH/docs/screenshots/c1-4/task1-mic-denied-gate/denied-state.png)
+![mic denied gate](https://raw.githubusercontent.com/julianken/ear-training-station/${SHA}/docs/screenshots/c1-4/task1-mic-denied-gate/denied-state.png)
 ..."
 ```
 

@@ -18,7 +18,7 @@
 
 Where it helps explain the change, embed a mermaid diagram using a ```mermaid fenced block — GitHub renders it inline. High-value mermaid candidates in this plan: the round-reducer state machine (for Task 6's CAPTURE_COMPLETE wiring), the component tree inside `ActiveRound`, event-dispatch sequences, navigation between session / summary / dashboard.
 
-**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-3/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body using an ABSOLUTE `raw.githubusercontent.com` URL with the branch interpolated at PR-creation time. Relative paths like `../../docs/...` do **not** work in PR bodies (GitHub resolves them against `/pull/N/`, not the repo root); the raw URL form works for both in-review PRs and post-merge viewers.
+**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-3/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body using an ABSOLUTE `raw.githubusercontent.com` URL with the commit SHA captured at PR-creation time. Relative paths like `../../docs/...` do **not** work in PR bodies (GitHub resolves them against `/pull/N/`, not the repo root); the SHA-based URL form works for both in-review PRs (commit exists on the PR branch) and post-merge viewers (commit persists in git history). The SHA-based URL survives squash-merge + branch deletion; the branch-based URL does not.
 
 Example snippet in the e2e spec:
 
@@ -29,9 +29,9 @@ await page.screenshot({ path: 'docs/screenshots/c1-3/task7-feedback-panel/pass-s
 And in the PR-creation step:
 
 ```bash
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
+SHA=$(git rev-parse HEAD)
 gh pr create --body "...
-![feedback on pass](https://raw.githubusercontent.com/julianken/ear-training-station/$BRANCH/docs/screenshots/c1-3/task7-feedback-panel/pass-state.png)
+![feedback on pass](https://raw.githubusercontent.com/julianken/ear-training-station/${SHA}/docs/screenshots/c1-3/task7-feedback-panel/pass-state.png)
 ..."
 ```
 
