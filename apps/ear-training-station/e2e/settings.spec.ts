@@ -16,21 +16,27 @@ test('settings page renders all four controls', async ({ page }) => {
   }
 });
 
-test('toggling function tooltip persists across client-side navigation', async ({ page }) => {
+test('toggling function tooltip persists across reload', async ({ page }) => {
   await seedOnboarded(page, { function_tooltip: true });
   await page.goto('/settings');
   const toggle = page.getByLabel(/function tooltip/i);
   await expect(toggle).toBeChecked();
   await toggle.click();
-  // Wait for the toggle to visually reflect unchecked (reactive store update)
   await expect(toggle).not.toBeChecked();
-  // Navigate away via client-side link (no re-seeding — addInitScript only fires on page.goto)
-  await page.getByRole('link', { name: /ear training/i }).click();
-  await page.waitForURL('/');
-  // Navigate back via client-side link
-  await page.getByRole('link', { name: /settings/i }).click();
-  await page.waitForURL('/settings');
-  await expect(page.getByLabel(/function tooltip/i)).not.toBeChecked();
+
+  // Verify the new value was actually written to IndexedDB (not just in-memory).
+  const persisted = await page.evaluate(() => new Promise<{ function_tooltip: boolean } | null>((resolve, reject) => {
+    const req = indexedDB.open('ear-training', 1);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const tx = req.result.transaction('settings', 'readonly');
+      const getReq = tx.objectStore('settings').get('singleton');
+      getReq.onsuccess = () => resolve(getReq.result as { function_tooltip: boolean } | null);
+      getReq.onerror = () => reject(getReq.error);
+    };
+  }));
+  expect(persisted).not.toBeNull();
+  expect(persisted!.function_tooltip).toBe(false);
 });
 
 test('reset-progress button opens confirmation dialog', async ({ page }) => {

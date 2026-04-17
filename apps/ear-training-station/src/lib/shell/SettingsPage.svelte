@@ -14,9 +14,13 @@
 
   async function performReset() {
     const deps = await getDeps();
-    await deps.db.clear('items');
-    await deps.db.clear('sessions');
-    await deps.db.clear('attempts');
+    const tx = deps.db.transaction(['items', 'sessions', 'attempts'], 'readwrite');
+    await Promise.all([
+      tx.objectStore('items').clear(),
+      tx.objectStore('sessions').clear(),
+      tx.objectStore('attempts').clear(),
+      tx.done,
+    ]);
     showResetModal = false;
     location.reload();
   }
