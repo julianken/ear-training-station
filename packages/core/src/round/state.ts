@@ -9,7 +9,7 @@ export type RoundState =
   | { kind: 'playing_cadence'; item: Item; timbre: TimbreId; register: Register; startedAt: number }
   | { kind: 'playing_target';  item: Item; timbre: TimbreId; register: Register; targetStartedAt: number; frames: PitchObservation[] }
   | { kind: 'listening';       item: Item; timbre: TimbreId; register: Register; targetStartedAt: number; frames: PitchObservation[]; digit: Degree | null; digitConfidence: number }
-  | { kind: 'graded';          item: Item; timbre: TimbreId; register: Register; outcome: AttemptOutcome; sungBest: PitchObservation | null; digitHeard: Degree | null };
+  | { kind: 'graded';          item: Item; timbre: TimbreId; register: Register; outcome: AttemptOutcome; cents_off: number | null; sungBest: PitchObservation | null; digitHeard: Degree | null; digitConfidence: number };
 
 export function roundReducer(state: RoundState, event: RoundEvent): RoundState {
   if (event.type === 'USER_CANCELED' && state.kind !== 'idle' && state.kind !== 'graded') {
@@ -71,6 +71,19 @@ export function roundReducer(state: RoundState, event: RoundEvent): RoundState {
           return { ...state, digit: event.digit, digitConfidence: event.confidence };
         }
         return state;
+      }
+      if (event.type === 'CAPTURE_COMPLETE') {
+        return {
+          kind: 'graded',
+          item: state.item,
+          timbre: state.timbre,
+          register: state.register,
+          outcome: { ...event.grade.outcome, at: event.at_ms },
+          cents_off: event.grade.cents_off,
+          sungBest: event.grade.sungBest,
+          digitHeard: event.grade.spokenDigit,
+          digitConfidence: event.grade.spokenConfidence,
+        };
       }
       return state;
 
