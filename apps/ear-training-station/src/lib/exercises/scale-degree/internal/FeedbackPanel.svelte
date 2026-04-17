@@ -19,16 +19,19 @@
 
   function explanation(): string {
     const { outcome, digitHeard, cents_off } = state;
+    const centsLabel = cents_off != null ? Math.round(cents_off) : null;
+    const direction = centsLabel != null ? (centsLabel >= 0 ? 'sharp' : 'flat') : null;
+    const centsText = centsLabel != null ? `${Math.abs(centsLabel)}¢ ${direction}` : 'unclear';
     if (outcome.pass) {
       return `Nice. You hit ${targetDegree} — ${targetKey.tonic}${targetKey.quality === 'minor' ? ' minor' : ''}.`;
     }
     if (!outcome.pitch && outcome.label) {
-      return `You said ${targetDegree} but your pitch was ${cents_off ?? '?'}¢ off.`;
+      return `You said ${targetDegree} but your pitch was ${centsText}.`;
     }
     if (outcome.pitch && !outcome.label) {
       return `You sang ${targetDegree} but said ${digitHeard ?? '—'}.`;
     }
-    return `Target was ${targetDegree}. You sang ${cents_off != null ? `${cents_off}¢ off` : 'unclear'} and said ${digitHeard ?? '—'}.`;
+    return `Target was ${targetDegree}. You sang ${centsText} and said ${digitHeard ?? '—'}.`;
   }
 </script>
 

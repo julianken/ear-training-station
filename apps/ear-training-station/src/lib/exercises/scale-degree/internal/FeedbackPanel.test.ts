@@ -19,7 +19,7 @@ describe('FeedbackPanel', () => {
   it('shows pass badges and cents value on a passing attempt', () => {
     render(FeedbackPanel, { state: graded, showTooltip: true });
     expect(screen.getAllByText(/✓/).length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText(/3/)).toBeInTheDocument(); // cents
+    expect(screen.getByText(/3¢/)).toBeInTheDocument(); // cents badge cell
   });
 
   it('shows fail badges when pitch fails', () => {
@@ -48,5 +48,29 @@ describe('FeedbackPanel', () => {
     render(FeedbackPanel, { state: graded, showTooltip: false, onNext });
     await userEvent.click(screen.getByRole('button', { name: /next round/i }));
     expect(onNext).toHaveBeenCalledOnce();
+  });
+
+  it('explanation uses rounded cents with sharp direction when pitch fails (positive cents_off)', () => {
+    render(FeedbackPanel, {
+      state: { ...graded, outcome: { pitch: false, label: true, pass: false, at: 0 }, cents_off: 12.7 },
+      showTooltip: false,
+    });
+    expect(screen.getByText(/13¢ sharp/i)).toBeInTheDocument();
+  });
+
+  it('explanation uses rounded cents with flat direction when cents_off is negative', () => {
+    render(FeedbackPanel, {
+      state: { ...graded, outcome: { pitch: false, label: true, pass: false, at: 0 }, cents_off: -23 },
+      showTooltip: false,
+    });
+    expect(screen.getByText(/23¢ flat/i)).toBeInTheDocument();
+  });
+
+  it('explanation uses "unclear" when cents_off is null', () => {
+    render(FeedbackPanel, {
+      state: { ...graded, outcome: { pitch: false, label: false, pass: false, at: 0 }, cents_off: null },
+      showTooltip: false,
+    });
+    expect(screen.getByText(/unclear/i)).toBeInTheDocument();
   });
 });
