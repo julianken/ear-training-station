@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createSessionController, ActiveRound, FeedbackPanel } from '$lib/exercises/scale-degree';
+  import { createSessionController, ActiveRound, FeedbackPanel, ReplayBar } from '$lib/exercises/scale-degree';
   import { getDeps } from '$lib/shell/deps';
   import { settings } from '$lib/shell/stores';
   import { onDestroy, onMount } from 'svelte';
@@ -53,7 +53,10 @@
       showTooltip={$settings.function_tooltip}
       onNext={() => { const c = controller; if (c) void c.next().then(() => c.startRound()); }}
     />
-    <!-- ReplayBar mounts in Task 8 -->
+    <ReplayBar
+      userBuffer={controller.capturedAudio}
+      targetBuffer={controller.targetAudio}
+    />
   {/if}
 {:else if data.session.ended_at == null && noItemsDue}
   <p>No items are due right now. <a href={resolve('/')}>Return to dashboard</a></p>

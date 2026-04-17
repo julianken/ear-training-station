@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { seedOnboarded } from './helpers/app-state';
 
-// TODO(Task 7, Task 8): Un-skip once FeedbackPanel and ReplayBar are implemented.
-// This test seeds a graded state via the _forceState hook and verifies the UI
-// renders correctly. The components it expects (FeedbackPanel showing "pitch",
-// ReplayBar button named "target") do not exist until Tasks 7–8 land.
+// FeedbackPanel (Task 7) and ReplayBar (Task 8) are both implemented.
+// NOTE: This test encounters the refresh-abandon guard in +page.ts: navigating to a session
+// with ended_at=null immediately marks it complete. The controller never mounts.
+// Screenshot capture is deferred to a follow-up task that bypasses the refresh-abandon guard.
+// Keeping the test skipped until the session route supports a ?preview or e2e=1 flag.
 test.skip('graded state renders FeedbackPanel and ReplayBar (seeded via test hook)', async ({ page, context }) => {
   await context.grantPermissions(['microphone']);
   await seedOnboarded(page);
