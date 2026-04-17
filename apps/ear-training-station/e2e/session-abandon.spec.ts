@@ -29,8 +29,8 @@ test('active session (ended_at null) is abandoned on navigation and shows summar
 
   await page.goto('/scale-degree/sessions/active-sess-1');
 
-  // load() performs refresh-abandon: sets ended_at, so the summary placeholder is shown.
-  await expect(page.getByText(/session complete/i)).toBeVisible();
+  // load() performs refresh-abandon: sets ended_at, so the SummaryView is shown.
+  await expect(page.getByRole('heading', { name: /done/i })).toBeVisible();
 });
 
 test('completed session shows summary placeholder', async ({ page }) => {
@@ -61,6 +61,6 @@ test('completed session shows summary placeholder', async ({ page }) => {
 
   await page.goto('/scale-degree/sessions/done-sess-1');
 
-  // Summary placeholder text until Task 11 builds real SummaryView.
-  await expect(page.getByText(/session complete/i)).toBeVisible();
+  // SummaryView renders when ended_at is set.
+  await expect(page.getByRole('heading', { name: /done/i })).toBeVisible();
 });
