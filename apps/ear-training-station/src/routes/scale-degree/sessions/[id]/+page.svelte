@@ -1,18 +1,37 @@
 <script lang="ts">
   import { createSessionController, ActiveRound, FeedbackPanel, ReplayBar, SummaryView } from '$lib/exercises/scale-degree';
+  import MicDeniedGate from '$lib/shell/MicDeniedGate.svelte';
   import { getDeps } from '$lib/shell/deps';
   import { settings } from '$lib/shell/stores';
   import { onDestroy, onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { dev } from '$app/environment';
+  import { page } from '$app/state';
+  import { queryMicPermission } from '@ear-training/web-platform/mic/permission';
 
   let { data } = $props();
 
   let controller: ReturnType<typeof createSessionController> | null = $state(null);
   let noItemsDue = $state(false);
+  let micDenied = $state(false);
 
   onMount(async () => {
     if (data.session.ended_at != null) return;
+
+    // Dev/test-only preview flag forces the denied-mic gate without real permission check.
+    if (
+      (dev || import.meta.env.MODE === 'test') &&
+      page.url.searchParams.get('preview') === 'mic-denied'
+    ) {
+      micDenied = true;
+      return;
+    }
+
+    const micState = await queryMicPermission();
+    if (micState === 'denied') {
+      micDenied = true;
+      return;
+    }
 
     const deps = await getDeps();
     const items = await deps.items.findDue(Date.now());
@@ -45,7 +64,9 @@
   onDestroy(() => controller?.dispose());
 </script>
 
-{#if data.session.ended_at == null && controller}
+{#if data.session.ended_at == null && micDenied}
+  <MicDeniedGate onRetry={() => window.location.reload()} />
+{:else if data.session.ended_at == null && controller}
   <ActiveRound {controller} />
   {#if controller.state.kind === 'graded'}
     <FeedbackPanel

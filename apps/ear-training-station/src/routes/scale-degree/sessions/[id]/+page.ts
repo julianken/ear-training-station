@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { getDeps } from '$lib/shell/deps';
 import type { CompleteSessionInput } from '@ear-training/core/repos/interfaces';
 import type { Attempt, Session } from '@ear-training/core/types/domain';
@@ -6,12 +7,16 @@ import type { Attempt, Session } from '@ear-training/core/types/domain';
 export const ssr = false;
 export const prerender = false;
 
-export async function load({ params }) {
+export async function load({ params, url }) {
   const deps = await getDeps();
   const session = await deps.sessions.get(params.id);
   if (!session) throw error(404, 'session not found');
 
-  if (session.ended_at == null) {
+  const bypassAbandon =
+    url.searchParams.get('preview') === 'mic-denied' &&
+    (dev || import.meta.env.MODE === 'test');
+
+  if (session.ended_at == null && !bypassAbandon) {
     // Refresh-abandon: roll up whatever attempts exist, mark complete.
     const attempts = await deps.attempts.findBySession(session.id);
     const rollup = rollUpAbandonedSession(attempts);
