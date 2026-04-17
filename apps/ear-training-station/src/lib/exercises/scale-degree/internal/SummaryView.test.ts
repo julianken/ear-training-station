@@ -47,4 +47,26 @@ describe('SummaryView', () => {
     // Anchor to avoid matching the "Done." heading
     expect(screen.getByRole('button', { name: /^done$/i })).toBeInTheDocument();
   });
+
+  it('pluralizes "round" correctly for multiple attempts', () => {
+    render(SummaryView, { session, attempts });
+    expect(screen.getByText(/8 rounds/i)).toBeInTheDocument();
+  });
+
+  it('uses singular "round" when exactly 1 attempt', () => {
+    const singleAttempt = [makeAttempt(0)];
+    render(SummaryView, { session: { ...session, completed_items: 1 }, attempts: singleAttempt });
+    expect(screen.getByText(/1 round(?!s)/i)).toBeInTheDocument();
+  });
+
+  it('uses dl/dd/dt semantic structure for stats', () => {
+    const { container } = render(SummaryView, { session, attempts });
+    const dls = container.querySelectorAll('dl.stat');
+    expect(dls.length).toBe(2);
+    // Each dl should have a dd (value) and dt (label)
+    for (const dl of dls) {
+      expect(dl.querySelector('dd')).not.toBeNull();
+      expect(dl.querySelector('dt')).not.toBeNull();
+    }
+  });
 });

@@ -20,8 +20,11 @@
   function explanation(): string {
     const { outcome, digitHeard, cents_off } = state;
     const centsLabel = cents_off != null ? Math.round(cents_off) : null;
-    const direction = centsLabel != null ? (centsLabel >= 0 ? 'sharp' : 'flat') : null;
-    const centsText = centsLabel != null ? `${Math.abs(centsLabel)}¢ ${direction}` : 'unclear';
+    const centsText = centsLabel != null
+      ? (centsLabel === 0
+          ? 'in tune'
+          : `${Math.abs(centsLabel)}¢ ${centsLabel > 0 ? 'sharp' : 'flat'}`)
+      : 'unclear';
     if (outcome.pass) {
       return `Nice. You hit ${targetDegree} — ${targetKey.tonic}${targetKey.quality === 'minor' ? ' minor' : ''}.`;
     }

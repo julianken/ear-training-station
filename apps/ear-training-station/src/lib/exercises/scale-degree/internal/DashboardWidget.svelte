@@ -8,6 +8,10 @@
 
 <div class="widget">
   <div class="stat">
+    <span class="value value-new">{$boxes.new}</span>
+    <span class="label">new</span>
+  </div>
+  <div class="stat">
     <span class="value">{$boxes.mastered}</span>
     <span class="label">mastered</span>
   </div>
@@ -25,5 +29,6 @@
   .widget { display: flex; gap: 12px; margin-top: 12px; }
   .stat { display: flex; flex-direction: column; }
   .value { font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; color: var(--cyan); }
+  .value-new { color: var(--muted); }
   .label { font-size: 9px; color: var(--muted); text-transform: uppercase; }
 </style>

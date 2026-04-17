@@ -22,17 +22,17 @@
 
 <section class="summary">
   <h1 class="title">Done.</h1>
-  <p class="meta">{durationLabel} · {attempts.length} rounds</p>
+  <p class="meta">{durationLabel} · {attempts.length} {attempts.length === 1 ? 'round' : 'rounds'}</p>
 
   <div class="stats">
-    <div class="stat">
-      <div class="n">{session.pitch_pass_count}/{attempts.length}</div>
-      <div class="stat-label">Pitch</div>
-    </div>
-    <div class="stat">
-      <div class="n">{session.label_pass_count}/{attempts.length}</div>
-      <div class="stat-label">Label</div>
-    </div>
+    <dl class="stat">
+      <dd class="n">{session.pitch_pass_count}/{attempts.length}</dd>
+      <dt class="stat-label">Pitch</dt>
+    </dl>
+    <dl class="stat">
+      <dd class="n">{session.label_pass_count}/{attempts.length}</dd>
+      <dt class="stat-label">Label</dt>
+    </dl>
   </div>
 
   <div class="actions">

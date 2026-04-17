@@ -78,4 +78,12 @@ describe('FeedbackPanel', () => {
     });
     expect(screen.getByText(/unclear/i)).toBeInTheDocument();
   });
+
+  it('explanation uses "in tune" when cents_off is exactly 0', () => {
+    render(FeedbackPanel, {
+      state: { ...graded, outcome: { pitch: false, label: true, pass: false, at: 0 }, cents_off: 0 },
+      showTooltip: false,
+    });
+    expect(screen.getByText(/in tune/i)).toBeInTheDocument();
+  });
 });

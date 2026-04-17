@@ -9,8 +9,9 @@ describe('DashboardWidget', () => {
     allItems.set([]);
   });
 
-  it('renders three Leitner box counts', () => {
+  it('renders four Leitner box counts', () => {
     render(DashboardWidget);
+    expect(screen.getByText(/new/i)).toBeInTheDocument();
     expect(screen.getByText(/mastered/i)).toBeInTheDocument();
     expect(screen.getByText(/reviewing/i)).toBeInTheDocument();
     expect(screen.getByText(/learning/i)).toBeInTheDocument();
@@ -19,7 +20,7 @@ describe('DashboardWidget', () => {
   it('renders 0 counts when no items present', () => {
     render(DashboardWidget);
     const values = screen.getAllByText('0');
-    expect(values.length).toBeGreaterThanOrEqual(3);
+    expect(values.length).toBeGreaterThanOrEqual(4);
   });
 
   it('reflects item counts in each Leitner box', () => {
@@ -38,6 +39,7 @@ describe('DashboardWidget', () => {
     });
 
     allItems.set([
+      makeItem('z', 'new'),
       makeItem('a', 'mastered'),
       makeItem('b', 'mastered'),
       makeItem('c', 'reviewing'),
@@ -49,11 +51,13 @@ describe('DashboardWidget', () => {
     render(DashboardWidget);
 
     const stats = document.querySelectorAll('.stat');
+    // new stat
+    expect(stats[0].querySelector('.value')?.textContent).toBe('1');
     // mastered stat
-    expect(stats[0].querySelector('.value')?.textContent).toBe('2');
+    expect(stats[1].querySelector('.value')?.textContent).toBe('2');
     // reviewing stat
-    expect(stats[1].querySelector('.value')?.textContent).toBe('1');
+    expect(stats[2].querySelector('.value')?.textContent).toBe('1');
     // learning stat
-    expect(stats[2].querySelector('.value')?.textContent).toBe('3');
+    expect(stats[3].querySelector('.value')?.textContent).toBe('3');
   });
 });

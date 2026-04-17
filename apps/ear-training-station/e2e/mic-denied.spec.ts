@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { seedOnboarded } from './helpers/app-state';
 
-test('denied mic renders the MicDeniedGate', async ({ page, context }) => {
-  await context.clearPermissions();
+test('denied mic renders the MicDeniedGate', async ({ page }) => {
   await seedOnboarded(page);
   await page.addInitScript(() => {
     return new Promise<void>((resolve, reject) => {
