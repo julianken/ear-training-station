@@ -971,7 +971,7 @@ Expected: both e2e tests now PASS. Card visible; click navigates.
 pnpm run dev
 ```
 
-To bypass the onboarding redirect temporarily, set onboarded=true via DevTools → Application → IndexedDB → EarTrainingDB → settings store, or visit `/onboarding` and navigate somewhere that flips the flag. Simpler: comment out the redirect line in `+layout.ts`, verify dashboard renders at `/`, then restore.
+To bypass the onboarding redirect temporarily, set onboarded=true via DevTools → Application → IndexedDB → `ear-training` → `settings` store (key `singleton`), or visit `/onboarding` and navigate somewhere that flips the flag. Simpler: comment out the redirect line in `+layout.ts`, verify dashboard renders at `/`, then restore.
 
 Expected at `/`: "Choose an exercise" heading + one card "Scale-Degree Practice" linking to `/scale-degree`. Stop dev server.
 
