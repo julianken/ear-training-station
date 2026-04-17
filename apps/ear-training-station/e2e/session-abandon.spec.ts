@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { seedOnboarded } from './helpers/app-state';
 
-test('active session (ended_at null) is abandoned on navigation and shows summary placeholder', async ({ page }) => {
+test('reloading an ongoing session abandons it and shows summary', async ({ page }) => {
   await seedOnboarded(page);
 
   await page.addInitScript(() => {
@@ -27,9 +27,11 @@ test('active session (ended_at null) is abandoned on navigation and shows summar
     });
   });
 
+  // First navigation — fresh, session remains active (no abandon).
   await page.goto('/scale-degree/sessions/active-sess-1');
 
-  // load() performs refresh-abandon: sets ended_at, so the SummaryView is shown.
+  // Reload — this triggers refresh-abandon, which sets ended_at and shows SummaryView.
+  await page.reload();
   await expect(page.getByRole('heading', { name: /done/i })).toBeVisible();
 });
 
