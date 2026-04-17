@@ -11,8 +11,10 @@ test('onboarded user can visit / without redirect', async ({ page }) => {
   await seedOnboarded(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
-  await page.screenshot({
-    path: '../../docs/screenshots/c1-2/task2-app-shell/shell-with-placeholder.png',
-    fullPage: true,
-  });
+  if (process.env.UPDATE_SCREENSHOTS) {
+    await page.screenshot({
+      path: '../../docs/screenshots/c1-2/task2-app-shell/shell-with-placeholder.png',
+      fullPage: true,
+    });
+  }
 });

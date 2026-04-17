@@ -33,6 +33,11 @@ export default defineConfig({
         find: /^\$lib\/(.*)/,
         replacement: path.join(appSrc, 'lib/$1'),
       },
+      // $app/paths → test stub (no SvelteKit runtime in vitest)
+      {
+        find: '$app/paths',
+        replacement: fileURLToPath(new URL('./tests/__mocks__/app-paths.ts', import.meta.url)),
+      },
       // @/ context-sensitive: core files → core src, web-platform files → web-platform src,
       // otherwise → app src. Uses customResolver to inspect the importer path.
       {

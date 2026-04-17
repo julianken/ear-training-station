@@ -3,7 +3,10 @@
   import { allSessions } from './stores';
   import { currentStreak } from '@ear-training/core/analytics/rollups';
 
-  const streak = derived(allSessions, ($sessions) => currentStreak($sessions, Date.now()));
+  const streak = derived(allSessions, ($sessions) => {
+    const tzOffsetMs = -new Date().getTimezoneOffset() * 60_000;
+    return currentStreak($sessions, Date.now(), tzOffsetMs);
+  });
 </script>
 
 <span class="streak-chip" aria-label="Current streak">
