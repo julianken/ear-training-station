@@ -1,7 +1,7 @@
 import { roundReducer } from '@ear-training/core/round/state';
 import type { RoundState } from '@ear-training/core/round/state';
 import type { RoundEvent } from '@ear-training/core/round/events';
-import type { Item, Session } from '@ear-training/core/types/domain';
+import type { Item, Session, Register } from '@ear-training/core/types/domain';
 import type {
   ItemsRepo, AttemptsRepo, SessionsRepo, SettingsRepo,
 } from '@ear-training/core/repos/interfaces';
@@ -10,6 +10,8 @@ import type { PitchDetectorHandle } from '@ear-training/web-platform/pitch/pitch
 import type { KeywordSpotterHandle } from '@ear-training/web-platform/speech/keyword-spotter';
 import type { RecorderHandle } from '@ear-training/web-platform/mic/recorder';
 import { gradeListeningState } from '@ear-training/core/round/grade-listening';
+import { pickTimbre, pickRegister, type VariabilityHistory, type TimbreId } from '@ear-training/core/variability/pickers';
+import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
 
 export interface SessionControllerDeps {
   session: Session;
@@ -20,6 +22,8 @@ export interface SessionControllerDeps {
   settingsRepo: SettingsRepo;
   getAudioContext: () => AudioContext;
   getMicStream: () => Promise<MediaStream>;
+  /** Optional rng for testability; defaults to Math.random. */
+  rng?: () => number;
 }
 
 export interface SessionController {
@@ -38,6 +42,8 @@ export interface SessionController {
   _forceTimer(id: number): void;
   /** @internal — test hook */
   _checkCaptureEnd(): void;
+  /** @internal — test hook for variability picker integration */
+  _pickVariability(items: ReadonlyArray<Item>): { timbre: TimbreId; register: Register };
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
@@ -54,6 +60,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #recorderHandle: RecorderHandle | null = null;
     #captureEndTimer: number | null = null;
     #disposed = false;
+    #history: VariabilityHistory = { lastTimbre: null, lastRegister: null };
+    #rng: () => number = deps.rng ?? Math.random;
 
     async #dispatch(event: RoundEvent): Promise<void> {
       const prev = this.state.kind;
@@ -106,9 +114,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       const ctx = deps.getAudioContext();
       const stream = await deps.getMicStream();
 
+      // Pick timbre and register via variability pickers (no monoculture)
+      const allItems = await deps.itemsRepo.listAll();
+      const { timbre, register } = this._pickVariability(allItems);
+
       // Dispatch ROUND_STARTED synthetically
-      const timbre = 'piano' as const;
-      const register = 'comfortable' as const;
       void this.#dispatch({
         type: 'ROUND_STARTED',
         at_ms: Date.now(),
@@ -179,7 +189,53 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     }
 
     async next(): Promise<void> {
-      throw new Error('not implemented — see C1.3 Task 6');
+      if (this.#disposed) return;
+      if (this.state.kind !== 'graded') return; // guard: only callable post-grade
+
+      const sessionRow = this.session!;
+      const gradedState = this.state;
+      const completed = sessionRow.completed_items + 1;
+
+      if (completed >= sessionRow.target_items) {
+        // Session is full — complete it, do not start another round.
+        await deps.sessionsRepo.complete(sessionRow.id, {
+          ended_at: Date.now(),
+          completed_items: completed,
+          pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
+          label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+          focus_item_id: sessionRow.focus_item_id,
+        });
+        this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
+        this.currentItem = null;
+        this.state = { kind: 'idle' };
+        return;
+      }
+
+      // More items due — advance.
+      const dueNow = await deps.itemsRepo.findDue(Date.now());
+      const justPlayed = this.currentItem?.id;
+      const next = dueNow.find((i) => i.id !== justPlayed) ?? dueNow[0] ?? null;
+      if (next == null) {
+        // Unusual: target_items says more to go but the queue is empty. Persist completion anyway.
+        await deps.sessionsRepo.complete(sessionRow.id, {
+          ended_at: Date.now(),
+          completed_items: completed,
+          pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
+          label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+          focus_item_id: sessionRow.focus_item_id,
+        });
+        this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
+        this.currentItem = null;
+        this.state = { kind: 'idle' };
+        return;
+      }
+
+      this.currentItem = next;
+      this.session = { ...sessionRow, completed_items: completed };
+      this.state = { kind: 'idle' };
+      // Reset captured/target audio for the next round.
+      this.capturedAudio = null;
+      this.targetAudio = null;
     }
 
     dispose(): void {
@@ -201,6 +257,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       this.#pitchHandle = null;
       this.#kwsHandle = null;
       this.#recorderHandle = null;
+    }
+
+    _pickVariability(items: ReadonlyArray<Item>): { timbre: TimbreId; register: Register } {
+      const variabilitySettings = { lockedTimbre: null, lockedRegister: null };
+      const available = availableRegisters(items);
+      const timbre = pickTimbre(this.#rng, this.#history, variabilitySettings);
+      const register = pickRegister(this.#rng, this.#history, variabilitySettings, available);
+      this.#history = { lastTimbre: timbre, lastRegister: register };
+      return { timbre, register };
     }
 
     _forceState(state: RoundState): void {
