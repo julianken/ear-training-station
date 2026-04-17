@@ -12,6 +12,9 @@ import type { RecorderHandle } from '@ear-training/web-platform/mic/recorder';
 import { gradeListeningState } from '@ear-training/core/round/grade-listening';
 import { pickTimbre, pickRegister, type VariabilityHistory, type TimbreId } from '@ear-training/core/variability/pickers';
 import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
+import { buildAttemptPersistence } from '@ear-training/core/round/persistence';
+import { nextBoxOnPass, nextBoxOnMiss } from '@ear-training/core/srs/leitner';
+import { SvelteMap } from 'svelte/reactivity';
 import { consecutiveNullCount } from '$lib/shell/stores';
 
 export interface SessionControllerDeps {
@@ -47,6 +50,12 @@ export interface SessionController {
   _pickVariability(items: ReadonlyArray<Item>): { timbre: TimbreId; register: Register };
   /** @internal — test hook: simulate a pitch frame arriving from the detector */
   _onPitchFrame(frame: { hz: number; confidence: number }): void;
+  /** @internal — test hook: set the running pitch/label pass counters directly,
+   *  to simulate the effect of persistence having run during _forceState tests */
+  _forceRunningCounters(pitch: number, label: number): void;
+  /** @internal — test hook: read the current running pitch/label pass counters
+   *  and roundIndex to verify consistency after persistence failures */
+  _getRunningCounters(): { pitch: number; label: number; roundIndex: number };
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
@@ -66,6 +75,14 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #history: VariabilityHistory = { lastTimbre: null, lastRegister: null };
     #rng: () => number = deps.rng ?? Math.random;
 
+    // Persistence state — maintained across rounds
+    #reviewsInBox: SvelteMap<string, number> = new SvelteMap();
+    #roundIndex: number = deps.session.completed_items;
+    #pitchPasses: number = deps.session.pitch_pass_count;
+    #labelPasses: number = deps.session.label_pass_count;
+    // Target hz stored at startRound time for use in attempt persistence
+    #currentTargetHz: number = 0;
+
     async #dispatch(event: RoundEvent): Promise<void> {
       const prev = this.state.kind;
       this.state = roundReducer(this.state, event);
@@ -83,6 +100,61 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
           try {
             this.capturedAudio = await this.#recorderHandle.stop();
           } catch { /* ignore */ }
+        }
+
+        // Persist the attempt and update item SRS state.
+        // Use at_ms from the CAPTURE_COMPLETE event as the clock source.
+        const gradedState = this.state as Extract<RoundState, { kind: 'graded' }>;
+        const item = gradedState.item;
+        const now = event.type === 'CAPTURE_COMPLETE' ? event.at_ms : Date.now();
+        const pitchOk = gradedState.outcome.pitch;
+        const labelOk = gradedState.outcome.label;
+
+        const prevReviews = this.#reviewsInBox.get(item.id) ?? 0;
+        // Compute nextBox to determine reviewsInCurrentBox
+        const consecutivePassesAfter = pitchOk && labelOk ? item.consecutive_passes + 1 : 0;
+        const nextBox = pitchOk && labelOk
+          ? nextBoxOnPass(item.box, consecutivePassesAfter)
+          : nextBoxOnMiss(item.box);
+        const reviewsInCurrentBox = nextBox === item.box ? prevReviews + 1 : 0;
+
+        const { attempt, updatedItem } = buildAttemptPersistence({
+          item,
+          sessionId: deps.session.id,
+          roundIndex: this.#roundIndex,
+          reviewsInCurrentBox,
+          now,
+          target: { hz: this.#currentTargetHz },
+          sung: {
+            hz: gradedState.sungBest?.hz ?? null,
+            cents_off: gradedState.cents_off,
+            confidence: gradedState.sungBest?.confidence ?? 0,
+          },
+          spoken: {
+            digit: gradedState.digitHeard,
+            confidence: gradedState.digitConfidence,
+          },
+          pitchOk,
+          labelOk,
+          timbre: gradedState.timbre,
+          register: gradedState.register,
+        });
+
+        try {
+          await deps.attemptsRepo.append(attempt);
+          await deps.itemsRepo.put(updatedItem);
+          // Update running counters only after both writes succeed — keeps
+          // controller state consistent with the DB on partial failure.
+          this.#reviewsInBox.set(item.id, reviewsInCurrentBox);
+          this.#roundIndex++;
+          if (pitchOk) this.#pitchPasses++;
+          if (labelOk) this.#labelPasses++;
+        } catch (e) {
+          // Persistence failed — leave counters at pre-round values so controller
+          // state stays consistent with the DB. A future C1.4 task will surface this
+          // to a shell-level degradation banner / toast.
+          // TODO(c1.4): surface persistence failure to the UI
+          console.error('session-controller: persistence failed, round not counted', e);
         }
       }
 
@@ -162,6 +234,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
       const cadence = buildCadence(this.currentItem.key);
       const target = buildTarget(this.currentItem.key, this.currentItem.degree, register);
+      this.#currentTargetHz = target.hz;
       this.#playHandle = playRound({ timbreId: timbre, cadence, target, gapSec: 0.2 });
 
       void this.#dispatch({ type: 'CADENCE_STARTED', at_ms: Date.now() });
@@ -199,16 +272,16 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       consecutiveNullCount.set(0);
 
       const sessionRow = this.session!;
-      const gradedState = this.state;
       const completed = sessionRow.completed_items + 1;
 
       if (completed >= sessionRow.target_items) {
         // Session is full — complete it, do not start another round.
+        // Running counters (#pitchPasses / #labelPasses) already include this round's outcome.
         await deps.sessionsRepo.complete(sessionRow.id, {
           ended_at: Date.now(),
           completed_items: completed,
-          pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
-          label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+          pitch_pass_count: this.#pitchPasses,
+          label_pass_count: this.#labelPasses,
           focus_item_id: sessionRow.focus_item_id,
         });
         this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
@@ -226,8 +299,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         await deps.sessionsRepo.complete(sessionRow.id, {
           ended_at: Date.now(),
           completed_items: completed,
-          pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
-          label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+          pitch_pass_count: this.#pitchPasses,
+          label_pass_count: this.#labelPasses,
           focus_item_id: sessionRow.focus_item_id,
         });
         this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
@@ -291,6 +364,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
     _forceTimer(id: number): void {
       this.#captureEndTimer = id;
+    }
+
+    _forceRunningCounters(pitch: number, label: number): void {
+      this.#pitchPasses = pitch;
+      this.#labelPasses = label;
+    }
+
+    _getRunningCounters(): { pitch: number; label: number; roundIndex: number } {
+      return { pitch: this.#pitchPasses, label: this.#labelPasses, roundIndex: this.#roundIndex };
     }
   }
 
