@@ -10,6 +10,8 @@ import type { PitchDetectorHandle } from '@ear-training/web-platform/pitch/pitch
 import type { KeywordSpotterHandle } from '@ear-training/web-platform/speech/keyword-spotter';
 import type { RecorderHandle } from '@ear-training/web-platform/mic/recorder';
 import { gradeListeningState } from '@ear-training/core/round/grade-listening';
+import { pickTimbre, pickRegister, type VariabilityHistory } from '@ear-training/core/variability/pickers';
+import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
 
 export interface SessionControllerDeps {
   session: Session;
@@ -20,6 +22,8 @@ export interface SessionControllerDeps {
   settingsRepo: SettingsRepo;
   getAudioContext: () => AudioContext;
   getMicStream: () => Promise<MediaStream>;
+  /** Optional rng for testability; defaults to Math.random. */
+  rng?: () => number;
 }
 
 export interface SessionController {
@@ -54,6 +58,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #recorderHandle: RecorderHandle | null = null;
     #captureEndTimer: number | null = null;
     #disposed = false;
+    #history: VariabilityHistory = { lastTimbre: null, lastRegister: null };
+    #rng: () => number = deps.rng ?? Math.random;
 
     async #dispatch(event: RoundEvent): Promise<void> {
       const prev = this.state.kind;
@@ -106,9 +112,14 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       const ctx = deps.getAudioContext();
       const stream = await deps.getMicStream();
 
+      // Pick timbre and register via variability pickers (no monoculture)
+      const variabilitySettings = { lockedTimbre: null, lockedRegister: null };
+      const allItems = await deps.itemsRepo.listAll();
+      const available = availableRegisters(allItems);
+      const timbre = pickTimbre(this.#rng, this.#history, variabilitySettings);
+      const register = pickRegister(this.#rng, this.#history, variabilitySettings, available);
+
       // Dispatch ROUND_STARTED synthetically
-      const timbre = 'piano' as const;
-      const register = 'comfortable' as const;
       void this.#dispatch({
         type: 'ROUND_STARTED',
         at_ms: Date.now(),
@@ -116,6 +127,9 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         timbre,
         register,
       });
+
+      // Persist history for next round (anti-repeat)
+      this.#history = { lastTimbre: timbre, lastRegister: register };
 
       // Lazy-load the audio handles (web-platform modules)
       const { playRound } = await import('@ear-training/web-platform/audio/player');
@@ -179,7 +193,52 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     }
 
     async next(): Promise<void> {
-      throw new Error('not implemented — see C1.3 Task 6');
+      if (this.#disposed) return;
+      if (this.state.kind !== 'graded') return; // guard: only callable post-grade
+
+      const sessionRow = this.session!;
+      const gradedState = this.state;
+      const completed = sessionRow.completed_items + 1;
+
+      if (completed >= sessionRow.target_items) {
+        // Session is full — complete it, do not start another round.
+        await deps.sessionsRepo.complete(sessionRow.id, {
+          ended_at: Date.now(),
+          completed_items: completed,
+          pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
+          label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+          focus_item_id: sessionRow.focus_item_id,
+        });
+        this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
+        this.currentItem = null;
+        this.state = { kind: 'idle' };
+        return;
+      }
+
+      // More items due — advance.
+      const dueNow = await deps.itemsRepo.findDue(Date.now());
+      const next = dueNow.find((i) => i.id !== sessionRow.focus_item_id) ?? dueNow[0] ?? null;
+      if (next == null) {
+        // Unusual: target_items says more to go but the queue is empty. Persist completion anyway.
+        await deps.sessionsRepo.complete(sessionRow.id, {
+          ended_at: Date.now(),
+          completed_items: completed,
+          pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
+          label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+          focus_item_id: sessionRow.focus_item_id,
+        });
+        this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
+        this.currentItem = null;
+        this.state = { kind: 'idle' };
+        return;
+      }
+
+      this.currentItem = next;
+      this.session = { ...sessionRow, completed_items: completed };
+      this.state = { kind: 'idle' };
+      // Reset captured/target audio for the next round.
+      this.capturedAudio = null;
+      this.targetAudio = null;
     }
 
     dispose(): void {

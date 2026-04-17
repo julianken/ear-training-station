@@ -1509,6 +1509,168 @@ Part of Plan C1.3.
 
 ---
 
+### Task 6.5: Variability picker wiring + `next()` implementation
+
+Addendum to Plan C1.3 (added post-PR #84). Task 6 left two spec-critical pieces unwired: `startRound()` still hardcodes `timbre: 'piano'` and `register: 'comfortable'`, and `next()` still throws. Both must land before Task 7 (FeedbackPanel) ships a "Next round" button.
+
+**Files:**
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.svelte.ts`
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.test.ts`
+
+- [ ] **Step 1: Branch**
+
+```bash
+git checkout main && git pull
+git checkout -b c1-3/task6-5-variability-next
+```
+
+- [ ] **Step 2: Write failing tests**
+
+Append to `session-controller.test.ts`:
+
+```typescript
+describe('SessionController — variability picker wiring', () => {
+  it('avoids repeating the previous timbre across rounds', async () => {
+    // Seed rng = () => 0 (always picks index 0 of the filtered pool).
+    // With lastTimbre = 'piano', pool excludes 'piano', so pool[0] = 'epiano'.
+    // We verify the controller accepts the rng dep without error.
+    const rng = vi.fn(() => 0);
+    const deps = { ...makeDeps(), rng };
+    const ctrl = createSessionController(deps);
+    expect(ctrl.state.kind).toBe('idle');
+  });
+
+  it('passes listAll() result to availableRegisters for register gating', async () => {
+    // listAll must exist on the itemsRepo dep and be callable.
+    const deps = makeDeps();
+    const ctrl = createSessionController({ ...deps, rng: () => 0 });
+    expect(ctrl.state.kind).toBe('idle');
+    expect(typeof deps.itemsRepo.listAll).toBe('function');
+  });
+});
+
+describe('SessionController — next()', () => {
+  it('is a no-op when not in graded state', async () => {
+    const ctrl = createSessionController(makeDeps());
+    await expect(ctrl.next()).resolves.toBeUndefined();
+    expect(ctrl.state.kind).toBe('idle');
+  });
+
+  it('advances to idle with the next due item when more rounds remain', async () => {
+    // Given a graded state and more items due, next() sets state to idle
+    // with the next item and increments completed_items.
+    // ...
+  });
+
+  it('completes the session when target_items is reached', async () => {
+    // Given completed_items === target_items - 1 (about to hit target),
+    // next() calls sessionsRepo.complete and sets ended_at.
+    // ...
+  });
+});
+```
+
+(The subagent writes the full test bodies using the existing `makeDeps()` / `_forceState()` scaffolding already in the file.)
+
+- [ ] **Step 3: Wire `VariabilityHistory` into the controller**
+
+In `session-controller.svelte.ts`:
+
+- Add `rng?: () => number` to `SessionControllerDeps` (defaults to `Math.random`).
+- Add a private `#history: VariabilityHistory = { lastTimbre: null, lastRegister: null }` field.
+- Add a private `#rng: () => number = deps.rng ?? Math.random` field.
+- At the top of `startRound()`, before the existing `ROUND_STARTED` dispatch, compute:
+  - `const variabilitySettings = { lockedTimbre: null, lockedRegister: null }` (Settings don't currently carry these; wire a real bridge when they do)
+  - `const allItems = await deps.itemsRepo.listAll()` for the registers gate
+  - `const available = availableRegisters(allItems)`
+  - `const timbre = pickTimbre(this.#rng, this.#history, variabilitySettings)`
+  - `const register = pickRegister(this.#rng, this.#history, variabilitySettings, available)`
+- Replace the hardcoded literals in the `ROUND_STARTED` dispatch and `playRound` call with those values.
+- After dispatch, update history: `this.#history = { lastTimbre: timbre, lastRegister: register }`.
+
+Imports to add:
+
+```typescript
+import { pickTimbre, pickRegister, type VariabilityHistory } from '@ear-training/core/variability/pickers';
+import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
+```
+
+- [ ] **Step 4: Implement `next()`**
+
+Replace the stub:
+
+```typescript
+async next(): Promise<void> {
+  if (this.#disposed) return;
+  if (this.state.kind !== 'graded') return; // guard: only callable post-grade
+
+  const sessionRow = this.session!;
+  const gradedState = this.state;
+  const completed = sessionRow.completed_items + 1;
+
+  if (completed >= sessionRow.target_items) {
+    // Session is full — complete it, do not start another round.
+    await deps.sessionsRepo.complete(sessionRow.id, {
+      ended_at: Date.now(),
+      completed_items: completed,
+      pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
+      label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+      focus_item_id: sessionRow.focus_item_id,
+    });
+    this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
+    this.currentItem = null;
+    this.state = { kind: 'idle' };
+    return;
+  }
+
+  // More items due — advance.
+  const dueNow = await deps.itemsRepo.findDue(Date.now());
+  const next = dueNow.find((i) => i.id !== sessionRow.focus_item_id) ?? dueNow[0] ?? null;
+  if (next == null) {
+    // Unusual: target_items says more to go but the queue is empty. Persist completion anyway.
+    await deps.sessionsRepo.complete(sessionRow.id, {
+      ended_at: Date.now(),
+      completed_items: completed,
+      pitch_pass_count: sessionRow.pitch_pass_count + (gradedState.outcome.pitch ? 1 : 0),
+      label_pass_count: sessionRow.label_pass_count + (gradedState.outcome.label ? 1 : 0),
+      focus_item_id: sessionRow.focus_item_id,
+    });
+    this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
+    this.currentItem = null;
+    this.state = { kind: 'idle' };
+    return;
+  }
+
+  this.currentItem = next;
+  this.session = { ...sessionRow, completed_items: completed };
+  this.state = { kind: 'idle' };
+  // Reset capturedAudio / targetAudio for the next round.
+  this.capturedAudio = null;
+  this.targetAudio = null;
+}
+```
+
+(Deliberately does NOT auto-call `startRound()`. The UI decides: FeedbackPanel's "Next round" button calls `controller.next()` then `controller.startRound()`.)
+
+- [ ] **Step 5: Run tests — expect pass**
+
+```bash
+pnpm --filter ear-training-station test session-controller
+```
+
+- [ ] **Step 6: Full suite + lint + typecheck**
+
+```bash
+pnpm run typecheck && pnpm run test && pnpm run lint
+```
+
+Expected: clean.
+
+- [ ] **Step 7: Commit + PR**
+(standard PR flow; diagrams section can note "N/A — no UI change, controller-internal wiring"; include link to the design spec's decision 3 + "Variability by default" non-negotiable)
+
+---
+
 ### Task 7: `FeedbackPanel.svelte` (+ `PitchNullHint`)
 
 Renders the F2 feedback panel from the spec: pitch ✓/✗ with cents, label ✓/✗ with spoken digit, plain-English explanation, optional function tooltip, and `PitchNullHint` after 3+ consecutive nulls.
