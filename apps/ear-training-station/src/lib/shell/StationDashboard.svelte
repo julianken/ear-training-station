@@ -18,6 +18,9 @@
       <a class="card" href={resolve(ex.manifest.route as ResolveInput)}>
         <h2 class="card-title">{ex.manifest.name}</h2>
         <p class="card-blurb">{ex.manifest.blurb}</p>
+        {#if ex.DashboardWidget}
+          <ex.DashboardWidget />
+        {/if}
       </a>
     {/each}
   </div>
