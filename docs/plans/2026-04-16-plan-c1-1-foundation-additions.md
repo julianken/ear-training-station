@@ -157,6 +157,11 @@ EOF
 ```bash
 git push -u origin c1-1/task1-settings-onboarded
 gh pr create --title "feat(core): add onboarded flag to Settings" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Adds `onboarded: boolean` to `Settings` with default `false`. Pre-existing IndexedDB rows get the default via the SettingsRepo schema-merge (PR #30).
 
@@ -491,6 +496,11 @@ EOF
 ```bash
 git push -u origin c1-1/task2-3-capture-complete-plus-grade
 gh pr create --title "feat(core): CAPTURE_COMPLETE event and gradeListeningState" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Adds the `CAPTURE_COMPLETE` event variant (per Option B from the design spec) and the pure `gradeListeningState()` function that produces its payload.
 
@@ -702,6 +712,11 @@ EOF
 )"
 git push -u origin c1-1/task4-capture-complete-transition
 gh pr create --title "feat(core): wire listening → graded via CAPTURE_COMPLETE" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Completes the round lifecycle state machine. Graded state variant gains `cents_off` and `digitConfidence` fields; reducer handles `listening + CAPTURE_COMPLETE → graded`.
 
@@ -906,6 +921,11 @@ EOF
 )"
 git push -u origin c1-1/task5-register-gating
 gh pr create --title "feat(core): register-expansion gating" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Unlocks `narrow` and `wide` registers gradually as items advance to reviewing/mastered. Constrains `pickRegister()` via an optional `available` list.
 
@@ -1248,6 +1268,11 @@ EOF
 )"
 git push -u origin c1-1/task6-audio-buffer-recorder
 gh pr create --title "feat(web-platform): AudioBufferRecorder via AudioWorklet" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 New `startAudioRecorder({ audioContext, micStream, maxDurationSec })` returns a handle with `start() / stop() / dispose()`. `stop()` resolves with an `AudioBuffer` sliced from a preallocated Float32 ring buffer.
 

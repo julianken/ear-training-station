@@ -406,6 +406,11 @@ EOF
 )"
 git push -u origin c1-2/task1-sveltekit-scaffold
 gh pr create --title "chore(app): scaffold SvelteKit + adapter-static + exercise-boundary lint" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Scaffolds SvelteKit 2.x + Svelte 5 + adapter-static. Configures client-only SPA. Preserves the existing audio harness. Adds ESLint rule enforcing exercise public-API boundary.
 
@@ -763,6 +768,11 @@ EOF
 )"
 git push -u origin c1-2/task2-app-shell
 gh pr create --title "feat(app): AppShell layout + onboarded redirect" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Shared shell chrome (logo, streak chip, settings link). Layout-level redirect to `/onboarding` when `settings.onboarded === false`.
 
@@ -1019,6 +1029,11 @@ EOF
 )"
 git push -u origin c1-2/task3-station-dashboard
 gh pr create --title "feat(app): exercise registry + StationDashboard" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Adds `$lib/exercises/` with a stub scale-degree manifest. StationDashboard renders one card per registered exercise at `/`.
 
@@ -1396,6 +1411,11 @@ EOF
 )"
 git push -u origin c1-2/task4-settings-page
 gh pr create --title "feat(app): Settings page" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 Full settings UI: four fields + reset-progress button with confirmation modal.
 
@@ -1807,6 +1827,11 @@ EOF
 )"
 git push -u origin c1-2/task5-onboarding-flow
 gh pr create --title "feat(app): OnboardingFlow (4 steps, stub warmup)" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 First-run gated onboarding route with 4 steps. Step 4 is a placeholder until C1.3 wires up the real warmup round.
 
@@ -1873,6 +1898,11 @@ EOF
 )"
 git push -u origin c1-2/task6-scale-degree-placeholder
 gh pr create --title "feat(app): placeholder /scale-degree route" --body "$(cat <<'EOF'
+## Diagrams
+
+<!-- Replace with a mermaid block (```mermaid fenced) showing the primary change.
+If the change genuinely cannot be diagrammed, write `N/A — <reason>`. -->
+
 ## Summary
 One-line Svelte page so the station picker resolves cleanly. Gets replaced in C1.3.
 
