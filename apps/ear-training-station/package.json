@@ -22,6 +22,9 @@
     "@sveltejs/adapter-static": "^3",
     "@sveltejs/kit": "^2",
     "@sveltejs/vite-plugin-svelte": "7.0.0",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/svelte": "5.3.1",
+    "@testing-library/user-event": "14.6.1",
     "svelte": "5.55.4",
     "svelte-check": "4.4.6",
     "vite": "8.0.8"
