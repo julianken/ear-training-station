@@ -78,6 +78,7 @@ export interface Settings {
   auto_advance_on_hit: boolean;
   session_length: 20 | 30 | 45;
   reduced_motion: 'auto' | 'on' | 'off';
+  onboarded: boolean;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
@@ -85,4 +86,5 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   auto_advance_on_hit: true,
   session_length: 30,
   reduced_motion: 'auto',
+  onboarded: false,
 });
