@@ -49,6 +49,9 @@
   onDestroy(() => controller?.dispose());
 
   async function finish() {
+    if (controller) {
+      await controller.next(); // completes the session since target_items === 1
+    }
     const deps = await getDeps();
     await deps.settings.update({ onboarded: true });
     settings.update((s) => ({ ...s, onboarded: true }));

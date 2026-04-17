@@ -67,7 +67,9 @@
     <PitchNullHint />
   {/if}
 
-  <button type="button" class="next-btn" onclick={() => onNext?.()}>Next round</button>
+  {#if onNext}
+    <button type="button" class="next-btn" onclick={() => onNext()}>Next round</button>
+  {/if}
 </section>
 
 <style>
