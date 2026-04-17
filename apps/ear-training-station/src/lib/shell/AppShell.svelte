@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import StreakChip from './StreakChip.svelte';
+  import ShellToast from './ShellToast.svelte';
   let { children } = $props();
 </script>
 
@@ -15,6 +16,7 @@
   <main class="shell-outlet">
     {@render children?.()}
   </main>
+  <ShellToast />
 </div>
 
 <style>
