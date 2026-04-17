@@ -14,6 +14,28 @@
 
 **TDD discipline — unit AND e2e:** continued. E2E tests are written before implementation for each user-visible error UX component. Service worker acceptance is a Playwright test that simulates offline and verifies the precached shell loads.
 
+**PR body requirements — screenshots + mermaid for UI tasks:** every PR in Tasks 1–3 (MicDeniedGate, DegradationBanner, ShellToast) MUST include at least one screenshot referenced in the PR body showing the component in its triggered state. Task 4 (service worker) should include a mermaid flowchart of the cache strategy (precache flow + runtime-cache flow for the KWS model). Task 5 (axe a11y) and Task 6 (bundle budget) ship text-only PRs — screenshots not required, but mermaid diagrams welcome if they clarify flows. Task 7 (small config cleanup) is text-only.
+
+**Headless-friendly screenshot workflow for implementer subagents:** capture from a Playwright script (reusing the task's own e2e spec), save to `docs/screenshots/c1-4/taskN-<slug>/<description>.png`, commit with the PR, and reference it in the PR body using an ABSOLUTE `raw.githubusercontent.com` URL with the branch interpolated at PR-creation time. Relative paths like `../../docs/...` do **not** work in PR bodies (GitHub resolves them against `/pull/N/`, not the repo root); the raw URL form works for both in-review PRs and post-merge viewers.
+
+Example for Task 1:
+
+```typescript
+// Inside e2e/mic-denied.spec.ts, after the assertion that the gate is visible:
+await page.screenshot({ path: 'docs/screenshots/c1-4/task1-mic-denied-gate/denied-state.png', fullPage: true });
+```
+
+And in the PR-creation step:
+
+```bash
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+gh pr create --body "...
+![mic denied gate](https://raw.githubusercontent.com/julianken/ear-training-station/$BRANCH/docs/screenshots/c1-4/task1-mic-denied-gate/denied-state.png)
+..."
+```
+
+Subagents `git add docs/screenshots/...` before committing. Human drag-and-drop screenshots welcome as follow-ups but not required for subagent-generated PRs.
+
 ---
 
 ## Task map
