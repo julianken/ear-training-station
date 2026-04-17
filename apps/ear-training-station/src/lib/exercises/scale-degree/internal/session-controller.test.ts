@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { get } from 'svelte/store';
 import { createSessionController } from './session-controller.svelte';
 import type { Item, Session } from '@ear-training/core/types/domain';
 import type { RoundState } from '@ear-training/core/round/state';
+import { consecutiveNullCount } from '$lib/shell/stores';
 
 const baseItem: Item = {
   id: '5-C-major',
@@ -253,5 +255,36 @@ describe('SessionController — next()', () => {
 
     await expect(ctrl.next()).resolves.toBeUndefined();
     expect(deps.sessionsRepo.complete).not.toHaveBeenCalled();
+  });
+});
+
+describe('SessionController — consecutiveNullCount store', () => {
+  beforeEach(() => {
+    // Reset store between tests to avoid leakage.
+    consecutiveNullCount.set(0);
+  });
+
+  it('increments consecutiveNullCount when a low-confidence frame arrives', () => {
+    const ctrl = createSessionController(makeDeps());
+    ctrl._onPitchFrame({ hz: 0, confidence: 0 });
+    expect(get(consecutiveNullCount)).toBe(1);
+    ctrl._onPitchFrame({ hz: 440, confidence: 0.3 });
+    expect(get(consecutiveNullCount)).toBe(2);
+  });
+
+  it('resets consecutiveNullCount to 0 when a high-confidence frame arrives', () => {
+    const ctrl = createSessionController(makeDeps());
+    // Seed the store to a non-zero value.
+    consecutiveNullCount.set(5);
+    ctrl._onPitchFrame({ hz: 440, confidence: 0.95 });
+    expect(get(consecutiveNullCount)).toBe(0);
+  });
+
+  it('resets consecutiveNullCount to 0 when next() is called', async () => {
+    const ctrl = createSessionController(makeDeps());
+    consecutiveNullCount.set(4);
+    ctrl._forceState(gradedState);
+    await ctrl.next();
+    expect(get(consecutiveNullCount)).toBe(0);
   });
 });

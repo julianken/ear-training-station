@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { createSessionController, ActiveRound } from '$lib/exercises/scale-degree';
+  import { createSessionController, ActiveRound, FeedbackPanel } from '$lib/exercises/scale-degree';
   import { getDeps } from '$lib/shell/deps';
+  import { settings } from '$lib/shell/stores';
   import { onDestroy, onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { dev } from '$app/environment';
@@ -46,7 +47,14 @@
 
 {#if data.session.ended_at == null && controller}
   <ActiveRound {controller} />
-  <!-- FeedbackPanel (Task 7) + ReplayBar (Task 8) mount here when state === 'graded' -->
+  {#if controller.state.kind === 'graded'}
+    <FeedbackPanel
+      state={controller.state}
+      showTooltip={$settings.function_tooltip}
+      onNext={() => { const c = controller; if (c) void c.next().then(() => c.startRound()); }}
+    />
+    <!-- ReplayBar mounts in Task 8 -->
+  {/if}
 {:else if data.session.ended_at == null && noItemsDue}
   <p>No items are due right now. <a href={resolve('/')}>Return to dashboard</a></p>
 {:else if data.session.ended_at == null}

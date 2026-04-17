@@ -12,6 +12,7 @@ import type { RecorderHandle } from '@ear-training/web-platform/mic/recorder';
 import { gradeListeningState } from '@ear-training/core/round/grade-listening';
 import { pickTimbre, pickRegister, type VariabilityHistory, type TimbreId } from '@ear-training/core/variability/pickers';
 import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
+import { consecutiveNullCount } from '$lib/shell/stores';
 
 export interface SessionControllerDeps {
   session: Session;
@@ -44,6 +45,8 @@ export interface SessionController {
   _checkCaptureEnd(): void;
   /** @internal — test hook for variability picker integration */
   _pickVariability(items: ReadonlyArray<Item>): { timbre: TimbreId; register: Register };
+  /** @internal — test hook: simulate a pitch frame arriving from the detector */
+  _onPitchFrame(frame: { hz: number; confidence: number }): void;
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
@@ -138,7 +141,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
       this.#pitchHandle = await startPitchDetector({ audioContext: ctx, micStream: stream });
       this.#pitchHandle.subscribe((frame) => {
-        void this.#dispatch({ type: 'PITCH_FRAME', at_ms: Date.now(), hz: frame.hz, confidence: frame.confidence });
+        this._onPitchFrame(frame);
       });
 
       try {
@@ -191,6 +194,9 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     async next(): Promise<void> {
       if (this.#disposed) return;
       if (this.state.kind !== 'graded') return; // guard: only callable post-grade
+
+      // Reset mic-check counter so the new round starts clean.
+      consecutiveNullCount.set(0);
 
       const sessionRow = this.session!;
       const gradedState = this.state;
@@ -266,6 +272,17 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       const register = pickRegister(this.#rng, this.#history, variabilitySettings, available);
       this.#history = { lastTimbre: timbre, lastRegister: register };
       return { timbre, register };
+    }
+
+    _onPitchFrame(frame: { hz: number; confidence: number }): void {
+      // Update the mic-check hint store (consecutiveNullCount).
+      // A "null" frame is one with no signal (hz <= 0) or low confidence (< 0.5).
+      if (frame.hz <= 0 || frame.confidence < 0.5) {
+        consecutiveNullCount.update((n) => n + 1);
+      } else {
+        consecutiveNullCount.set(0);
+      }
+      void this.#dispatch({ type: 'PITCH_FRAME', at_ms: Date.now(), hz: frame.hz, confidence: frame.confidence });
     }
 
     _forceState(state: RoundState): void {
