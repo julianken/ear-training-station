@@ -142,12 +142,12 @@ export function dismissToast(id: string): void {
 
 <div class="toast-region" role="status" aria-live="polite" aria-atomic="false">
   {#each $pendingToasts as toast (toast.id)}
-    <div class="toast toast-{toast.level}" role="alert">
+    <div class="toast toast-{toast.level}">
       <span class="message">{toast.message}</span>
       <button
         type="button"
         class="dismiss"
-        aria-label="Dismiss notification"
+        aria-label={`Dismiss: ${toast.message}`}
         onclick={() => dismissToast(toast.id)}
       >✕</button>
     </div>

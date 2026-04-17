@@ -1,7 +1,6 @@
 <script lang="ts">
   import { pendingToasts, dismissToast, type Toast } from './stores';
   import { onDestroy } from 'svelte';
-  import { SvelteMap } from 'svelte/reactivity';
 
   const AUTO_DISMISS_MS: Record<Toast['level'], number | null> = {
     info: 5000,
@@ -9,7 +8,8 @@
     error: null, // manual only
   };
 
-  const timers = new SvelteMap<string, number>();
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  const timers = new Map<string, number>();
 
   function scheduleAutoDismiss(toast: Toast): void {
     const delay = AUTO_DISMISS_MS[toast.level];
@@ -34,12 +34,12 @@
 
 <div class="toast-region" role="status" aria-live="polite" aria-atomic="false">
   {#each $pendingToasts as toast (toast.id)}
-    <div class="toast toast-{toast.level}" role="alert">
+    <div class="toast toast-{toast.level}">
       <span class="message">{toast.message}</span>
       <button
         type="button"
         class="dismiss"
-        aria-label="Dismiss notification"
+        aria-label={`Dismiss: ${toast.message}`}
         onclick={() => dismissToast(toast.id)}
       >✕</button>
     </div>
