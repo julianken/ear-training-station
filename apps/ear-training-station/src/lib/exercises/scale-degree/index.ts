@@ -15,3 +15,4 @@ export const manifest: ExerciseManifest = {
 export { createSessionController } from './internal/session-controller.svelte';
 export type { SessionController, SessionControllerDeps } from './internal/session-controller.svelte';
 export { default as ActiveRound } from './internal/ActiveRound.svelte';
+export { default as FeedbackPanel } from './internal/FeedbackPanel.svelte';
