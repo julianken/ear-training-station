@@ -136,10 +136,98 @@ describe('roundReducer', () => {
       const graded: RoundState = {
         kind: 'graded', item: ITEM, timbre: 'piano', register: 'narrow',
         outcome: { pitch: true, label: true, pass: true, at: 500 },
-        sungBest: null, digitHeard: null,
+        cents_off: null, sungBest: null, digitHeard: null, digitConfidence: 0,
       };
       expect(roundReducer(graded, { type: 'ROUND_STARTED', at_ms: 600, item: ITEM, timbre: 'guitar', register: 'wide' })).toBe(graded);
       expect(roundReducer(graded, { type: 'USER_CANCELED', at_ms: 600 })).toBe(graded);
     });
+  });
+});
+
+describe('roundReducer — listening + CAPTURE_COMPLETE → graded', () => {
+  const baseItem: Item = {
+    id: '5-C-major',
+    degree: 5,
+    key: { tonic: 'C', quality: 'major' },
+    box: 'new',
+    accuracy: { pitch: 0, label: 0 },
+    recent: [],
+    attempts: 0,
+    consecutive_passes: 0,
+    last_seen_at: null,
+    due_at: 0,
+    created_at: 0,
+  };
+
+  const listeningState: Extract<RoundState, { kind: 'listening' }> = {
+    kind: 'listening',
+    item: baseItem,
+    timbre: 'piano',
+    register: 'comfortable',
+    targetStartedAt: 0,
+    frames: [{ at_ms: 100, hz: 392, confidence: 0.95 }],
+    digit: 5,
+    digitConfidence: 0.9,
+  };
+
+  const event: Extract<RoundEvent, { type: 'CAPTURE_COMPLETE' }> = {
+    type: 'CAPTURE_COMPLETE',
+    at_ms: 500,
+    grade: {
+      outcome: { pitch: true, label: true, pass: true, at: 500 },
+      cents_off: 4,
+      sungBest: { at_ms: 100, hz: 392, confidence: 0.95 },
+      spokenDigit: 5,
+      spokenConfidence: 0.9,
+    },
+  };
+
+  it('transitions listening → graded with outcome copied from the event grade', () => {
+    const result = roundReducer(listeningState, event);
+    expect(result.kind).toBe('graded');
+    if (result.kind !== 'graded') throw new Error('unreachable');
+    expect(result.outcome).toEqual(event.grade.outcome);
+  });
+
+  it('copies cents_off and digitConfidence onto the graded state', () => {
+    const result = roundReducer(listeningState, event);
+    if (result.kind !== 'graded') throw new Error('unreachable');
+    expect(result.cents_off).toBe(4);
+    expect(result.digitConfidence).toBe(0.9);
+  });
+
+  it('copies sungBest and digitHeard onto the graded state', () => {
+    const result = roundReducer(listeningState, event);
+    if (result.kind !== 'graded') throw new Error('unreachable');
+    expect(result.sungBest).toEqual(event.grade.sungBest);
+    expect(result.digitHeard).toBe(5);
+  });
+
+  it('preserves item, timbre, and register across the transition', () => {
+    const result = roundReducer(listeningState, event);
+    if (result.kind !== 'graded') throw new Error('unreachable');
+    expect(result.item).toBe(baseItem);
+    expect(result.timbre).toBe('piano');
+    expect(result.register).toBe('comfortable');
+  });
+
+  it('ignores CAPTURE_COMPLETE from non-listening states', () => {
+    const idle: RoundState = { kind: 'idle' };
+    expect(roundReducer(idle, event)).toBe(idle);
+  });
+
+  // Added per PR #59 SUGGESTION: reducer stamps outcome.at from event.at_ms
+  it('stamps outcome.at from event.at_ms, not the grade payload', () => {
+    const staleEvent: Extract<RoundEvent, { type: 'CAPTURE_COMPLETE' }> = {
+      type: 'CAPTURE_COMPLETE',
+      at_ms: 999,
+      grade: {
+        ...event.grade,
+        outcome: { ...event.grade.outcome, at: 1 }, // stale placeholder
+      },
+    };
+    const result = roundReducer(listeningState, staleEvent);
+    if (result.kind !== 'graded') throw new Error('unreachable');
+    expect(result.outcome.at).toBe(999);
   });
 });
