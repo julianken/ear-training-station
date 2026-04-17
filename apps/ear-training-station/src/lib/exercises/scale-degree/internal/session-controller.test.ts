@@ -5,6 +5,14 @@ import type { Item, Session } from '@ear-training/core/types/domain';
 import type { RoundState } from '@ear-training/core/round/state';
 import { consecutiveNullCount } from '$lib/shell/stores';
 
+/** Flush all pending microtasks so async fire-and-forget dispatches complete. */
+async function flushPromises(): Promise<void> {
+  // Multiple ticks to drain chained awaits (recorder.stop, append, put)
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+  }
+}
+
 const baseItem: Item = {
   id: '5-C-major',
   degree: 5,
@@ -214,6 +222,10 @@ describe('SessionController — next()', () => {
     const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
 
     ctrl._forceState(gradedState);
+    // Simulate persistence having run for this round:
+    // #pitchPasses and #labelPasses are updated when graded transition fires.
+    // _forceState bypasses dispatch, so we advance the running counters manually.
+    ctrl._forceRunningCounters(16, 19); // 15+1 pitch pass, 18+1 label pass
 
     await ctrl.next();
 
@@ -225,8 +237,8 @@ describe('SessionController — next()', () => {
       'sess-1',
       expect.objectContaining({
         completed_items: 30,
-        pitch_pass_count: 16, // 15 + 1 for the passing outcome
-        label_pass_count: 19, // 18 + 1
+        pitch_pass_count: 16, // running counter (15 + 1 from this round)
+        label_pass_count: 19, // running counter (18 + 1 from this round)
       }),
     );
   });
@@ -255,6 +267,104 @@ describe('SessionController — next()', () => {
 
     await expect(ctrl.next()).resolves.toBeUndefined();
     expect(deps.sessionsRepo.complete).not.toHaveBeenCalled();
+  });
+});
+
+describe('SessionController — attempt persistence on graded transition', () => {
+  // Helper: build a CAPTURE_COMPLETE-like graded state via _checkCaptureEnd.
+  // Uses _forceState to set up the listening state, then calls _checkCaptureEnd
+  // to trigger the real graded transition including persistence.
+  function setupListening(ctrl: ReturnType<typeof createSessionController>) {
+    ctrl._forceState({
+      kind: 'listening',
+      item: baseItem,
+      timbre: 'piano',
+      register: 'comfortable',
+      targetStartedAt: 0,
+      frames: [{ at_ms: 100, hz: 392, confidence: 0.95 }],
+      digit: 5,
+      digitConfidence: 0.9,
+    } as never);
+  }
+
+  it('calls attemptsRepo.append exactly once on graded transition', async () => {
+    const deps = makeDeps();
+    const ctrl = createSessionController(deps);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+
+    // #dispatch is async fire-and-forget; flush all pending microtasks.
+    await flushPromises();
+
+    expect(deps.attemptsRepo.append).toHaveBeenCalledOnce();
+  });
+
+  it('calls itemsRepo.put exactly once with the updated item', async () => {
+    const deps = makeDeps();
+    const ctrl = createSessionController(deps);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    expect(deps.itemsRepo.put).toHaveBeenCalledOnce();
+    const putArg = (deps.itemsRepo.put as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Item;
+    expect(putArg.id).toBe(baseItem.id);
+    expect(putArg.attempts).toBe(1);
+    // new → learning on first pass (pitch+label both pass above threshold)
+    expect(putArg.box).toBe('learning');
+  });
+
+  it('attempt has correct session_id, item_id, and graded shape', async () => {
+    const deps = makeDeps();
+    const ctrl = createSessionController(deps);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    const appendArg = (deps.attemptsRepo.append as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      session_id: string;
+      item_id: string;
+      graded: { pitch: boolean; label: boolean; pass: boolean };
+    };
+    expect(appendArg.session_id).toBe('sess-1');
+    expect(appendArg.item_id).toBe(baseItem.id);
+    // Both pitch and label pass (hz=392 ≈ G4 = degree 5 of C major; digit=5 = degree 5)
+    expect(appendArg.graded.pass).toBe(true);
+  });
+
+  it('running #pitchPasses / #labelPasses are reflected in session completion', async () => {
+    const deps = makeDeps();
+    deps.itemsRepo.findDue = vi.fn(async () => []);
+    const session: Session = {
+      ...baseSession,
+      completed_items: 5,
+      target_items: 30,
+      pitch_pass_count: 3,
+      label_pass_count: 2,
+    };
+    const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
+
+    // Transition through real graded path (not _forceState bypass)
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    // Flush all async persistence work before calling next()
+    await flushPromises();
+
+    // Now next() should see the updated running counters
+    await ctrl.next();
+
+    // pitch_pass_count: 3 (init) + 1 (this round pitch pass) = 4
+    // label_pass_count: 2 (init) + 1 (this round label pass) = 3
+    expect(deps.sessionsRepo.complete).toHaveBeenCalledWith(
+      'sess-1',
+      expect.objectContaining({
+        pitch_pass_count: 4,
+        label_pass_count: 3,
+      }),
+    );
   });
 });
 

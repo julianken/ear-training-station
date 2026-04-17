@@ -2228,6 +2228,34 @@ Part of Plan C1.3.
 
 ---
 
+### Task 8.5: Attempt persistence via pure core helper
+
+**Goal:** Close the gap surfaced in the PR #85 review: `SessionController` was grading in-memory but never persisting attempts or item SRS updates to `attemptsRepo`/`itemsRepo`. This means Leitner box transitions, accuracy updates, and `due_at` were all silently lost between sessions.
+
+The fix extracts the pure math from `orchestrator.recordAttempt()` into a stateless helper `buildAttemptPersistence`, refactors the orchestrator to use it (no behavior change), and wires the controller's `listening → graded` transition to call the helper and write to both repos.
+
+**Files:**
+- Create: `packages/core/src/round/persistence.ts` — `BuildAttemptInput` interface + `buildAttemptPersistence()` pure function
+- Create: `packages/core/tests/round/persistence.test.ts` — 7 unit tests for the helper
+- Modify: `packages/core/src/session/orchestrator.ts` — refactor `recordAttempt()` to delegate to helper (same external behavior)
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.svelte.ts` — add private persistence state (`#reviewsInBox`, `#roundIndex`, `#pitchPasses`, `#labelPasses`, `#currentTargetHz`) and wire graded-transition persistence
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.test.ts` — add 4 new persistence tests, update `next()` completion test to use `_forceRunningCounters` hook
+
+**TDD steps:**
+- [ ] Write failing `buildAttemptPersistence` test (module not found)
+- [ ] Implement `packages/core/src/round/persistence.ts`
+- [ ] Refactor orchestrator to use helper — orchestrator tests unchanged
+- [ ] Write failing controller persistence tests
+- [ ] Wire `#dispatch` graded-transition + `next()` counter usage
+- [ ] `pnpm run typecheck && pnpm run test && pnpm run lint` — all green
+
+**Commit:**
+```
+feat(core/controller): attempt persistence via buildAttemptPersistence helper (Task 8.5)
+```
+
+---
+
 ### Task 9: `DashboardView.svelte`
 
 The exercise dashboard — mastery bars per degree, key heatmap, Leitner pipeline, Start CTA.

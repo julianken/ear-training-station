@@ -1,10 +1,10 @@
-import type { Attempt, AttemptOutcome, Item, LeitnerBox, Register, Session } from '@/types/domain';
+import type { AttemptOutcome, Item, LeitnerBox, Register, Session } from '@/types/domain';
 import type { Degree } from '@/types/music';
 import type { ItemsRepo, AttemptsRepo, SessionsRepo } from '@/repos/interfaces';
 import { selectNextItem } from '@/scheduler/selection';
 import type { RoundHistoryEntry } from '@/scheduler/interleaving';
-import { nextBoxOnPass, nextBoxOnMiss, dueAtAfter } from '@/srs/leitner';
-import { weightedAccuracy, pushOutcome } from '@/srs/accuracy';
+import { nextBoxOnPass, nextBoxOnMiss } from '@/srs/leitner';
+import { buildAttemptPersistence } from '@/round/persistence';
 
 export interface OrchestratorDeps {
   itemsRepo: ItemsRepo;
@@ -81,59 +81,38 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     async recordAttempt(input) {
       if (!started || currentSessionId === null) throw new Error('session not started');
       const now = deps.now();
-      const outcome: AttemptOutcome = {
-        pitch: input.pitchOk,
-        label: input.labelOk,
-        pass: input.pitchOk && input.labelOk,
-        at: now,
-      };
 
-      // Update item
-      const updated: Item = {
-        ...input.item,
-        attempts: input.item.attempts + 1,
-        consecutive_passes: outcome.pass ? input.item.consecutive_passes + 1 : 0,
-        recent: pushOutcome(input.item.recent, outcome),
-        last_seen_at: now,
-      };
-      updated.accuracy = {
-        pitch: weightedAccuracy(updated.recent, 'pitch'),
-        label: weightedAccuracy(updated.recent, 'label'),
-      };
-      const nextBox = outcome.pass
-        ? nextBoxOnPass(input.item.box, updated.consecutive_passes)
+      // Pre-compute nextBox to determine reviewsInCurrentBox before calling helper
+      const consecutivePassesAfter = input.pitchOk && input.labelOk
+        ? input.item.consecutive_passes + 1
+        : 0;
+      const nextBox = input.pitchOk && input.labelOk
+        ? nextBoxOnPass(input.item.box, consecutivePassesAfter)
         : nextBoxOnMiss(input.item.box);
       const reviewsInCurrentBox = nextBox === input.item.box
         ? (reviewsInBox.get(input.item.id) ?? 0) + 1
         : 0;
       reviewsInBox.set(input.item.id, reviewsInCurrentBox);
-      updated.box = nextBox;
-      updated.due_at = dueAtAfter(nextBox, reviewsInCurrentBox, now);
-      await deps.itemsRepo.put(updated);
 
-      // Record attempt
-      const attempt: Attempt = {
-        id: `${currentSessionId}-${completedItems}-${input.item.id}`,
-        item_id: input.item.id,
-        session_id: currentSessionId,
-        at: now,
-        target: { hz: input.target.hz, degree: input.item.degree },
-        sung: input.sung,
-        spoken: input.spoken,
-        graded: outcome,
-        timbre: input.timbre,
-        register: input.register,
-      };
+      const { attempt, updatedItem } = buildAttemptPersistence({
+        ...input,
+        sessionId: currentSessionId,
+        roundIndex: completedItems,
+        reviewsInCurrentBox,
+        now,
+      });
+
+      await deps.itemsRepo.put(updatedItem);
       await deps.attemptsRepo.append(attempt);
 
       // Update session bookkeeping
       completedItems++;
-      if (outcome.pitch) pitchPasses++;
-      if (outcome.label) labelPasses++;
+      if (attempt.graded.pitch) pitchPasses++;
+      if (attempt.graded.label) labelPasses++;
 
       history.push({ itemId: input.item.id, degree: input.item.degree, key: input.item.key });
 
-      return outcome;
+      return attempt.graded;
     },
 
     async completeSession() {
