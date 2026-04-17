@@ -2,7 +2,7 @@
   import StepWelcome from './onboarding/StepWelcome.svelte';
   import StepMicPermission from './onboarding/StepMicPermission.svelte';
   import StepConceptIntro from './onboarding/StepConceptIntro.svelte';
-  import StepWarmupStub from './onboarding/StepWarmupStub.svelte';
+  import StepWarmupRound from './onboarding/StepWarmupRound.svelte';
 
   let step = $state<1 | 2 | 3 | 4>(1);
 
@@ -21,7 +21,7 @@
   {:else if step === 3}
     <StepConceptIntro onNext={next} onBack={back} />
   {:else}
-    <StepWarmupStub onBack={back} />
+    <StepWarmupRound onBack={back} />
   {/if}
 </div>
 
