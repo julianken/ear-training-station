@@ -75,7 +75,7 @@ export default defineConfig({
       },
       workbox: {
         // Precache all SvelteKit-generated app shell assets.
-        globPatterns: ['client/**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        globPatterns: ['client/**/*.{js,css,ico,png,svg,webmanifest}'],
         runtimeCaching: [
           {
             // Cache TensorFlow Hub model shards loaded by speech-commands at runtime.
