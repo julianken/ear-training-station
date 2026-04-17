@@ -86,8 +86,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         this.#captureEndTimer = null;
       }
       this.#playHandle?.cancel();
-      void this.#pitchHandle?.stop();
-      void this.#kwsHandle?.stop();
+      this.#pitchHandle?.stop().catch(() => {});
+      this.#kwsHandle?.stop().catch(() => {});
       this.#recorderHandle?.dispose();
       this.#playHandle = null;
       this.#pitchHandle = null;
