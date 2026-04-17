@@ -146,6 +146,8 @@ All checks must pass before merging to `main`. Branch protection enforces this (
 
 **Mergify** (`.mergify.yml`): merge queue with squash strategy. PRs are NOT auto-queued — after approval and green checks, comment `@Mergifyio queue` on the PR to enter the merge queue. Mergify then squash-merges when queue conditions are met (1 approval, all checks, no draft, no conflict).
 
+**Queue comment rule:** the comment body MUST be exactly `@Mergifyio queue` — no preceding prose, no trailing notes. Mergify's actions parser silently ignores prose-prefixed comments, leaving the PR sitting open. If explanatory context belongs on the PR (e.g., "addressed the SUGGESTION in commit X"), post it as a SEPARATE comment first, then the queue command as its own standalone comment. Two comments, not one.
+
 **Dependabot** (`.github/dependabot.yml`): weekly npm with groups (testing, svelte, tensorflow, eslint), monthly GH Actions. tfjs major versions are blocked (v3 pinning is load-bearing).
 
 **CI gotchas:**
