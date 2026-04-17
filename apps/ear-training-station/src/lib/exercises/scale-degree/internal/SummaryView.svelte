@@ -22,17 +22,17 @@
 
 <section class="summary">
   <h1 class="title">Done.</h1>
-  <p class="meta">{durationLabel} · {attempts.length} rounds</p>
+  <p class="meta">{durationLabel} · {attempts.length} {attempts.length === 1 ? 'round' : 'rounds'}</p>
 
   <div class="stats">
-    <div class="stat">
-      <div class="n">{session.pitch_pass_count}/{attempts.length}</div>
-      <div class="stat-label">Pitch</div>
-    </div>
-    <div class="stat">
-      <div class="n">{session.label_pass_count}/{attempts.length}</div>
-      <div class="stat-label">Label</div>
-    </div>
+    <dl class="stat">
+      <dt class="stat-label">Pitch</dt>
+      <dd class="n">{session.pitch_pass_count}/{attempts.length}</dd>
+    </dl>
+    <dl class="stat">
+      <dt class="stat-label">Label</dt>
+      <dd class="n">{session.label_pass_count}/{attempts.length}</dd>
+    </dl>
   </div>
 
   <div class="actions">
@@ -46,7 +46,7 @@
   .title { font-size: 28px; margin: 0 0 4px; color: var(--green); }
   .meta { font-size: 11px; color: var(--muted); margin: 0 0 24px; }
   .stats { display: flex; gap: 16px; justify-content: center; margin: 0 0 24px; }
-  .stat { flex: 1; padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+  .stat { flex: 1; padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column-reverse; }
   .n { font-size: 28px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
   .actions { display: flex; gap: 8px; justify-content: center; }

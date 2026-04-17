@@ -2,7 +2,7 @@
   import { createSessionController, ActiveRound, FeedbackPanel, ReplayBar, SummaryView } from '$lib/exercises/scale-degree';
   import MicDeniedGate from '$lib/shell/MicDeniedGate.svelte';
   import { getDeps } from '$lib/shell/deps';
-  import { settings } from '$lib/shell/stores';
+  import { settings, pushToast } from '$lib/shell/stores';
   import { onDestroy, onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { dev } from '$app/environment';
@@ -72,7 +72,17 @@
     <FeedbackPanel
       state={controller.state}
       showTooltip={$settings.function_tooltip}
-      onNext={() => { const c = controller; if (c) void c.next().then(() => c.startRound()); }}
+      onNext={async () => {
+        const c = controller;
+        if (!c) return;
+        try {
+          await c.next();
+          await c.startRound();
+        } catch (err) {
+          pushToast({ message: 'Could not advance. Try again.', level: 'error' });
+          console.error('session advance failed:', err);
+        }
+      }}
     />
     <ReplayBar
       userBuffer={controller.capturedAudio}

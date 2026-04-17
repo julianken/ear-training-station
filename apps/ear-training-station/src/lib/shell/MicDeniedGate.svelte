@@ -2,7 +2,7 @@
   let { onRetry }: { onRetry: () => void } = $props();
 </script>
 
-<section class="mic-denied">
+<section class="mic-denied" role="status" aria-live="polite">
   <h2>Microphone access required</h2>
   <p>
     Practice rounds use your microphone to detect pitch and the degree you say.

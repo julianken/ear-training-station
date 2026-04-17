@@ -101,7 +101,7 @@ test('station picker shows DashboardWidget with Leitner counts', async ({ page }
   await page.waitForSelector('.card', { timeout: 5000 });
 
   await expect(page.locator('.station-dashboard .card')).toBeVisible();
-  await expect(page.locator('.station-dashboard .card .stat')).toHaveCount(3);
+  await expect(page.locator('.station-dashboard .card .stat')).toHaveCount(4);
 
   if (process.env.UPDATE_SCREENSHOTS) {
     await page.screenshot({

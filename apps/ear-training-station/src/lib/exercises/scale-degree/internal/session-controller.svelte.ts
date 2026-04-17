@@ -268,6 +268,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
     cancelRound(): void {
       if (this.#disposed) return;
+      consecutiveNullCount.set(0);
       void this.#dispatch({ type: 'USER_CANCELED', at_ms: Date.now() });
       this.#stopAudioHandles();
     }
@@ -328,6 +329,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     dispose(): void {
       if (this.#disposed) return;
       this.#disposed = true;
+      consecutiveNullCount.set(0);
+      degradationState.update((s) => ({ ...s, kwsUnavailable: false }));
       this.#stopAudioHandles();
     }
 
@@ -367,19 +370,23 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     }
 
     _forceState(state: RoundState): void {
+      if (import.meta.env.MODE === 'production') return;
       this.state = state;
     }
 
     _forceTimer(id: number): void {
+      if (import.meta.env.MODE === 'production') return;
       this.#captureEndTimer = id;
     }
 
     _forceRunningCounters(pitch: number, label: number): void {
+      if (import.meta.env.MODE === 'production') return;
       this.#pitchPasses = pitch;
       this.#labelPasses = label;
     }
 
     _getRunningCounters(): { pitch: number; label: number; roundIndex: number } {
+      if (import.meta.env.MODE === 'production') return { pitch: 0, label: 0, roundIndex: 0 };
       return { pitch: this.#pitchPasses, label: this.#labelPasses, roundIndex: this.#roundIndex };
     }
   }
