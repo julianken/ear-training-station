@@ -1,15 +1,14 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
-    "paths": {
-      "@/*": ["./src/*", "../../packages/core/src/*", "../../packages/web-platform/src/*"],
-      "@ear-training/core/*": ["../../packages/core/src/*"],
-      "@ear-training/web-platform/*": ["../../packages/web-platform/src/*"]
-    }
-  },
-  "include": [
-    "src/**/*",
-    "../../packages/core/src/**/*",
-    "../../packages/web-platform/src/**/*"
-  ]
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "moduleResolution": "bundler"
+  }
 }

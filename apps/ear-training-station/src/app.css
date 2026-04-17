@@ -1,0 +1,15 @@
+@import '@ear-training/ui-tokens/tokens.css';
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, -apple-system, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+button { font: inherit; cursor: pointer; }
+input, select { font: inherit; }
