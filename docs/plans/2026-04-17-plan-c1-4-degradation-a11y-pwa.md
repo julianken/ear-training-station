@@ -220,7 +220,7 @@ git checkout -b c1-4/task2-degradation-banner
 
 - [ ] **Step 2: Extend the store surface**
 
-In `stores.ts`, the `degradationState` store already exists from C1.2. Replace its shape with:
+In `stores.ts`, the `degradationState` store already exists from C1.2 (currently `writable<'ok' | 'kws-unavailable'>('ok')`). Replace its shape with:
 
 ```typescript
 export interface DegradationState {
@@ -235,7 +235,9 @@ export const degradationState = writable<DegradationState>({
 });
 ```
 
-Any existing consumers that read the old shape must be updated — `pnpm run typecheck` will flag them.
+**Ripple is zero:** verified via `git grep degradationState` — there are no consumers outside `stores.ts` itself. The shape change is safe; no follow-on edits needed in other files.
+
+**Persistence-error test harness:** follow the existing pattern at `session-controller.test.ts:423-487`, which already exercises persistence failure via stub repos that reject `attempts.append()` / `items.put()`. Reuse that describe-block's stub shape; add an assertion on `get(degradationState).persistenceFailing === true` (using `get` from `svelte/store`). Remember to `beforeEach(() => degradationState.set({ kwsUnavailable: false, persistenceFailing: false, micLost: false }))` so prior-test state doesn't leak.
 
 - [ ] **Step 3: Write the banner test**
 
@@ -424,25 +426,73 @@ describe('MicDeniedGate', () => {
 </style>
 ```
 
-- [ ] **Step 3: Wire into session route**
+- [ ] **Step 3: Wire into session route — onMount-time permission check**
 
-In `+page.svelte`, add a state variable `micDenied = $state(false)`. In the existing `onMount` that constructs the controller, if `getMicStream()` throws with a permission-denied error, set `micDenied = true` instead of throwing. Render `<MicDeniedGate onRetry={() => window.location.reload()} />` when `micDenied` is true.
+`getMicStream()` is NOT called in `onMount` today — the callback is passed into `createSessionController(...)` and only invoked later when `startRound()` fires (see `session-controller.svelte.ts:199`). Gating at the `getMicStream` call site is too late and splits the UX across two different components.
 
-- [ ] **Step 4: e2e test**
+Instead, add an explicit permission check at mount time in the route's `+page.svelte`:
+
+```svelte
+<script lang="ts">
+  import { queryMicPermission } from '@ear-training/web-platform/mic/permission';
+  // ...
+  let micDenied = $state(false);
+
+  onMount(async () => {
+    if (data.session.ended_at != null) return;
+
+    const micState = await queryMicPermission();
+    if (micState === 'denied') {
+      micDenied = true;
+      return;
+    }
+
+    const deps = await getDeps();
+    // ... existing controller construction below
+  });
+</script>
+
+{#if data.session.ended_at == null && micDenied}
+  <MicDeniedGate onRetry={() => window.location.reload()} />
+{:else if data.session.ended_at == null && controller}
+  <!-- existing ActiveRound + FeedbackPanel -->
+{:else ...}
+```
+
+This is testable without error-type narrowing at the `getMicStream` call site, and the gate branch is reachable cleanly.
+
+- [ ] **Step 4: e2e test — route-level `?preview=mic-denied` flag**
+
+The session route's refresh-abandon (`+page.ts:14-21`) marks any `ended_at == null` session complete on load, which is why `round-graded.spec.ts` is `test.skip`'d. The same blocker would make a "seeded active session + denied mic" e2e render `SummaryView`, not `MicDeniedGate`.
+
+Introduce a narrow escape hatch: an opt-in `?preview=mic-denied` query param that, when present, skips the refresh-abandon in `+page.ts` AND forces `micDenied = true` in `+page.svelte`. The flag is dev/e2e-only; gate it behind `if (dev || import.meta.env.MODE === 'test')` to prevent production leakage (same pattern as the `window.__sessionControllerForTest` hook in PR #83).
 
 ```typescript
+// e2e/mic-denied.spec.ts
 import { test, expect } from '@playwright/test';
 import { seedOnboarded } from './helpers/app-state';
 
 test('denied mic renders the MicDeniedGate', async ({ page, context }) => {
-  await context.clearPermissions();  // no mic grant
+  await context.clearPermissions();
   await seedOnboarded(page);
-  // Seed an active session + due item so the route tries to construct the controller.
-  // ...
-  await page.goto('/scale-degree/sessions/sess-denied');
+  // Seed a session row via page.evaluate (sync IDB, unlike addInitScript)
+  await page.evaluate(async () => {
+    const req = indexedDB.open('ear-training', 1);
+    await new Promise((resolve) => { req.onsuccess = resolve; });
+    const tx = req.result.transaction('sessions', 'readwrite');
+    tx.objectStore('sessions').put({
+      id: 'sess-mic-denied', started_at: Date.now(), ended_at: null,
+      target_items: 30, completed_items: 0,
+      pitch_pass_count: 0, label_pass_count: 0, focus_item_id: null,
+    });
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+  });
+  await page.goto('/scale-degree/sessions/sess-mic-denied?preview=mic-denied');
   await expect(page.getByRole('heading', { name: /microphone access required/i })).toBeVisible();
 });
 ```
+
+If route-flag wiring is controversial, fall back to `test.skip` with a clear comment referencing `round-graded.spec.ts`'s existing skip. The implementer can judge based on how invasive the flag ends up being.
 
 - [ ] **Step 5: Run + commit + PR**
 
@@ -631,12 +681,24 @@ gh pr create --title "ci: bundle-size budget"
 
 Consolidates remaining polish items accumulated during C1.3.
 
-**Files (exact list depends on what's still flagged):**
-- Modify: `session-controller.svelte.ts` — `next()` callers of the onNext failure path need a catch → toast (pattern from S1 on PR #86)
-- Modify: `DashboardWidget.svelte` — include the `new` Leitner box count (SUGGESTION from PR #90)
-- Modify: `FeedbackPanel.svelte` — onNext callers wrap in try/catch that calls `pushToast({ level: 'error', ... })` on failure (PR #86 S1 deferred)
-- Modify: `SummaryView.svelte` — pluralization fix for "1 rounds" → "1 round" (PR #91 SUGGESTION)
-- Optional: `session-controller.svelte.ts` — extract `_forceState/_forceTimer/_forceRunningCounters/_getRunningCounters` behind a dev-only guard so they don't ship in prod bundles
+**Files (exact items pulled from accumulated PR reviews):**
+
+From PR #86 (FeedbackPanel + consecutiveNullCount):
+- Modify: `apps/ear-training-station/src/routes/scale-degree/sessions/[id]/+page.svelte` (line ~54) — onNext's `void c.next().then(() => c.startRound())` silently swallows rejections. Wrap in try/catch that calls `pushToast({ level: 'error', message: 'Could not advance. Try again.' })` on failure.
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.svelte.ts` — `cancelRound()` and `dispose()` do NOT reset `consecutiveNullCount` (only `next()` does). Stale count leaks across controller instances after HMR or navigation-back. Reset in both.
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/FeedbackPanel.svelte` — `cents_off === 0` currently renders as "0¢ sharp" (the sign-based direction logic treats `>= 0` as sharp). Handle zero explicitly as `"in tune"` or a neutral string.
+
+From PR #88 (test-hook production bundle leakage):
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.svelte.ts` — extract `_forceState` / `_forceTimer` / `_forceRunningCounters` / `_getRunningCounters` / `_onPitchFrame` / `_checkCaptureEnd` behind a dev-only guard (e.g., conditionally attached only when `import.meta.env.MODE !== 'production'`). Keeps ~80+ bytes out of prod bundles.
+
+From PR #90 (DashboardWidget):
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/DashboardWidget.svelte` — include the `new` Leitner box count as a fourth stat (muted color). Fresh users currently see "0 mastered / 0 reviewing / 0 learning" even with a full starter curriculum queued.
+
+From PR #91 (SummaryView):
+- Modify: `apps/ear-training-station/src/lib/exercises/scale-degree/internal/SummaryView.svelte` — pluralization fix: "1 rounds" → "1 round". Tiny — ternary on `attempts.length === 1`.
+- Modify: same file — `.n` + `.stat-label` pair lacks semantic association for screen readers. Wrap each `.stat` in a `<dl>` / `<dt>` / `<dd>` structure, or add `aria-describedby` pointing at the label.
+
+**Test-isolation caveat (applies across this task):** multiple suites now reset shared stores (`allItems`, `consecutiveNullCount`, `pendingToasts`, `degradationState`) in describe-scoped `beforeEach`. If a future test file imports these stores without a reset, it inherits leaked state from the previous file. Consider a `vitest.setup.ts` hook that resets ALL shell stores between test files; if scope balloons, flag as a follow-up instead of doing it here.
 
 - [ ] **Step 1: Branch**
 
