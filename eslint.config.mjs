@@ -10,7 +10,6 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/.svelte-kit/**',
-      'apps/ear-training-station/harness/**',
       'apps/ear-training-station/build/**',
     ],
   },
