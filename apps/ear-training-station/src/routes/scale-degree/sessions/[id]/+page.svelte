@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createSessionController, ActiveRound, FeedbackPanel, ReplayBar } from '$lib/exercises/scale-degree';
+  import { createSessionController, ActiveRound, FeedbackPanel, ReplayBar, SummaryView } from '$lib/exercises/scale-degree';
   import { getDeps } from '$lib/shell/deps';
   import { settings } from '$lib/shell/stores';
   import { onDestroy, onMount } from 'svelte';
@@ -63,5 +63,5 @@
 {:else if data.session.ended_at == null}
   <p>Loading…</p>
 {:else}
-  <p>Session complete (summary UI lands in Task 11). {data.attempts.length} attempts.</p>
+  <SummaryView session={data.session} attempts={data.attempts} />
 {/if}
