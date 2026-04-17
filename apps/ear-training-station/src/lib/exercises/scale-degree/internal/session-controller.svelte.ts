@@ -35,6 +35,8 @@ export interface SessionController {
   /** @internal — test hook */
   _forceState(state: RoundState): void;
   /** @internal — test hook */
+  _forceTimer(id: number): void;
+  /** @internal — test hook */
   _checkCaptureEnd(): void;
 }
 
@@ -59,6 +61,12 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       const curr = this.state.kind;
 
       if (prev === 'listening' && curr === 'graded') {
+        // Clear the 5-second capture-end timer so it doesn't fire during a
+        // future round if next() is called before the timeout expires.
+        if (this.#captureEndTimer != null) {
+          clearTimeout(this.#captureEndTimer);
+          this.#captureEndTimer = null;
+        }
         // Stop the recorder and attach the buffer
         if (this.#recorderHandle) {
           try {
@@ -197,6 +205,10 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
     _forceState(state: RoundState): void {
       this.state = state;
+    }
+
+    _forceTimer(id: number): void {
+      this.#captureEndTimer = id;
     }
   }
 

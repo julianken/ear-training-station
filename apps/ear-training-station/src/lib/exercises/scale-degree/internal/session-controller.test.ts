@@ -98,4 +98,35 @@ describe('SessionController — capture-end + CAPTURE_COMPLETE', () => {
     ctrl._checkCaptureEnd();
     expect(ctrl.state.kind).toBe('listening');
   });
+
+  it('clears the capture-end timer when auto-advancing to graded', () => {
+    vi.useFakeTimers();
+    try {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+      const ctrl = createSessionController(makeDeps());
+
+      // Plant a fake timer id to simulate a pending capture-end setTimeout
+      const fakeTimerId = setTimeout(() => {}, 5000);
+      ctrl._forceTimer(fakeTimerId as unknown as number);
+
+      // Force into a listening state that will produce a passing grade
+      ctrl._forceState({
+        kind: 'listening',
+        item: baseItem, timbre: 'piano', register: 'comfortable',
+        targetStartedAt: 0,
+        frames: [{ at_ms: 100, hz: 392, confidence: 0.95 }],
+        digit: 5,
+        digitConfidence: 0.9,
+      } as never);
+
+      ctrl._checkCaptureEnd();
+
+      expect(ctrl.state.kind).toBe('graded');
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(fakeTimerId);
+    } finally {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    }
+  });
 });
