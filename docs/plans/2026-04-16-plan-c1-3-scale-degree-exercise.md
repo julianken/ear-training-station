@@ -14,7 +14,17 @@
 
 **TDD discipline — unit AND e2e:** continued from C1.2. Every task that introduces user-visible behavior includes a Playwright e2e test written BEFORE the component. For round-playback tasks (5, 6, 7, 8) where driving Web Audio in Playwright is genuinely hard, the unit-test layer carries TDD and the e2e layer is a single integration test at the end of Task 6 that seeds a graded-state session via the controller's test hooks. Tasks 2, 9, 11, 12 are UX flows with straightforward e2e.
 
-**PR body requirements — screenshots + mermaid for UI tasks:** every PR in this plan MUST include at least one screenshot in the PR body (every task here ships visible UI). Where it helps explain the change, embed a mermaid diagram using a ```mermaid fenced block — GitHub renders it inline. Good mermaid candidates in this plan: component trees, round state-machine transitions, event-dispatch sequences, reducer wiring, route navigation between session / summary / dashboard. Capture screenshots via `pnpm run dev` (http://localhost:5173) once the user flow works, then drag into the GitHub PR comment box. Implementer subagents for tasks in this plan are expected to follow this requirement as part of PR creation.
+**PR body requirements — screenshots + mermaid for UI tasks:** every PR in this plan that adds or modifies a `.svelte` file or a rendered route MUST include at least one screenshot referenced in the PR body. Tasks in this plan that are *not* UI-bearing and therefore exempt from the screenshot requirement: **Task 1 (SessionController class, `.svelte.ts` only)** and **Task 6 (capture-end wiring in the same controller)**. Every other task (2, 3, 4, 5, 7, 8, 9, 10, 11, 12) ships visible UI and needs a screenshot.
+
+Where it helps explain the change, embed a mermaid diagram using a ```mermaid fenced block — GitHub renders it inline. High-value mermaid candidates in this plan: the round-reducer state machine (for Task 6's CAPTURE_COMPLETE wiring), the component tree inside `ActiveRound`, event-dispatch sequences, navigation between session / summary / dashboard.
+
+**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-3/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body via a relative markdown image link: `![feedback panel on pass](../../docs/screenshots/c1-3/task7-feedback-panel/pass-state.png)`. Example snippet for the e2e spec:
+
+```typescript
+await page.screenshot({ path: 'docs/screenshots/c1-3/task7-feedback-panel/pass-state.png', fullPage: true });
+```
+
+Subagents `git add docs/screenshots/...` before the PR commit. Human drag-and-drop screenshots are welcome follow-ups but not required for subagent-generated PRs.
 
 ---
 

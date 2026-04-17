@@ -14,7 +14,16 @@
 
 **TDD discipline — unit AND e2e:** every task that introduces user-visible behavior includes a Playwright e2e test written BEFORE the implementation, alongside the component unit test. The e2e test is the acceptance gate: a feature is not "done" until Playwright passes on top of Vitest. Shared Playwright fixtures + helpers land in Task 1. Feature tasks (2–5) each gain an explicit "Write the failing e2e test" step before the component work.
 
-**PR body requirements — screenshots + mermaid for UI tasks:** every PR in this plan that adds or modifies visible UI (any `.svelte` file, CSS/tokens affecting rendering, any route) MUST include at least one screenshot in the PR body. When architecture, flow, state machine, component tree, or navigation graph clarifies the change, embed a mermaid diagram in the PR body using a ```mermaid fenced block. GitHub renders mermaid inline — this is the fastest way to communicate structure without external tooling. Screenshots: take them from `pnpm run dev` in a real browser at `http://localhost:5173` after the task's user flow works, then drag into the GitHub PR comment box (produces a markdown image link). Implementer subagents dispatched for tasks in this plan are expected to follow this requirement as part of their PR creation step.
+**PR body requirements — screenshots + mermaid for UI tasks:** every PR in this plan that adds or modifies visible UI (any `.svelte` file, CSS/tokens affecting rendering, any route) MUST include at least one screenshot referenced in the PR body. When architecture, flow, state machine, component tree, or navigation graph clarifies the change, embed a mermaid diagram in the PR body using a ```mermaid fenced block. GitHub renders mermaid inline.
+
+**Headless-friendly screenshot workflow for implementer subagents:** capture the screenshot directly from a Playwright script (reusing the task's own e2e spec is ideal — it already drives the flow), save the PNG to `docs/screenshots/c1-2/taskN-<slug>/<description>.png`, commit it with the PR, and reference it in the PR body via a relative markdown image link: `![dashboard picker](../../docs/screenshots/c1-2/task3-station-dashboard/picker.png)`. Example snippet to add at the end of the e2e spec:
+
+```typescript
+// Capture screenshot for PR body
+await page.screenshot({ path: 'docs/screenshots/c1-2/task3-station-dashboard/picker.png', fullPage: true });
+```
+
+Subagents run `pnpm exec playwright test ... -- --update-snapshots` (or simply let the screenshot call fire as part of a normal test run), then `git add docs/screenshots/...` before committing. Human-in-the-loop drag-and-drop is fine for follow-up polish but not required for the subagent-generated PR.
 
 ---
 
