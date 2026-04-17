@@ -4,4 +4,5 @@ import { defineWorkspace } from 'vitest/config';
 
 export default defineWorkspace([
   'packages/*/vitest.config.ts',
+  'apps/ear-training-station/vitest.config.ts',
 ]);

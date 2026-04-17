@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "pnpm --filter ear-training-station dev",
     "build": "pnpm --filter ear-training-station build",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "sync:app": "pnpm --filter ear-training-station exec svelte-kit sync",
+    "test": "pnpm run sync:app && vitest run",
+    "test:watch": "pnpm run sync:app && vitest",
     "typecheck": "pnpm -r run typecheck",
     "test:e2e": "pnpm --filter ear-training-station test:e2e",
     "lint": "eslint ."
