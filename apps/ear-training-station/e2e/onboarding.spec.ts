@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { resetAppState } from './helpers/app-state';
 
-test('fresh user completes onboarding through the stub step 4', async ({ page, context }) => {
+test('fresh user reaches the warmup round step in onboarding', async ({ page, context }) => {
   await context.grantPermissions(['microphone']);
   await resetAppState(page);
   await page.goto('/');
@@ -26,11 +26,17 @@ test('fresh user completes onboarding through the stub step 4', async ({ page, c
   await expect(page.getByRole('heading', { name: /scale degrees/i })).toBeVisible();
   await page.getByRole('button', { name: /continue/i }).click();
 
-  // Step 4 — Stub warmup
-  await page.getByRole('button', { name: /start practicing/i }).click();
-
-  // Lands on /scale-degree (Task 6 adds the placeholder route)
-  await expect(page).toHaveURL(/\/scale-degree$/);
+  // Step 4 — Real warmup round: assert the heading is visible and the Start Round button renders.
+  // Driving the full round (grading → finish) requires the audio stack to complete under
+  // Playwright's fake media, which is tested more reliably at the controller integration level.
+  await expect(page.getByRole('heading', { name: /your first round/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /start round/i })).toBeVisible();
+  if (process.env.UPDATE_SCREENSHOTS) {
+    await page.screenshot({
+      path: '../../docs/screenshots/c1-3/task12-warmup-round/default.png',
+      fullPage: true,
+    });
+  }
 });
 
 test('back button returns to previous step', async ({ page, context }) => {

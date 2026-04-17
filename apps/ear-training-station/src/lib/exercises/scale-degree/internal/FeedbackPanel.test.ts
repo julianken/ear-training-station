@@ -43,6 +43,11 @@ describe('FeedbackPanel', () => {
     expect(screen.getByText(/you sang 5 but said 4/i)).toBeInTheDocument();
   });
 
+  it('does not render the Next round button when onNext is undefined', () => {
+    render(FeedbackPanel, { state: graded, showTooltip: false });
+    expect(screen.queryByRole('button', { name: /next round/i })).not.toBeInTheDocument();
+  });
+
   it('clicking Next round button fires onNext', async () => {
     const onNext = vi.fn();
     render(FeedbackPanel, { state: graded, showTooltip: false, onNext });
