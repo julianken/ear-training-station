@@ -1,7 +1,36 @@
+## Diagrams
+
+<!-- PRIMARY comprehension surface. Reviewers should be able to grasp the full
+change from the diagram(s) alone — Summary and code diff are supporting context,
+not the primary explanation.
+
+Use ```mermaid fenced blocks (GitHub renders them inline). Good shapes: state
+machines, component trees, sequence diagrams, data flows, navigation graphs,
+cache strategies. Multiple diagrams are encouraged when the PR spans layers.
+
+If the change genuinely cannot be diagrammed (one-line typo, dep bump,
+comment-only), write: N/A — <reason>
+
+```mermaid
+sequenceDiagram
+    participant UI as Session Screen
+    participant Ctrl as Grading Controller
+    participant Core as roundReducer
+
+    UI->>Ctrl: cadence played
+    Ctrl->>Core: CADENCE_STARTED
+    UI->>Ctrl: target played
+    Ctrl->>Core: TARGET_STARTED
+    Ctrl->>Core: CAPTURE_COMPLETE (pitchGrade + digit)
+    Core-->>Ctrl: state → graded
+    Ctrl-->>UI: render F2 feedback panel
+```
+-->
+
 ## Summary
 
-<!-- 1–3 bullets. What changes, why, and what it unlocks. Lead with the "why" when
-the "what" is obvious from the diff. -->
+<!-- 1–3 bullets supporting the diagram(s) above. Lead with the *why* — the
+diagram shows the *what*. -->
 
 -
 -
@@ -26,19 +55,6 @@ Pattern (inside a subagent bash HEREDOC):
 
 Human-authored PRs can drag-and-drop the image directly into the comment box —
 GitHub uploads it and inserts a working link. -->
-
-## Diagrams
-
-<!-- Optional. Use a ```mermaid fenced block when a diagram clarifies the change
-more than prose would. GitHub renders mermaid inline. Good candidates:
-component trees, state machines, data flows, navigation graphs, cache strategies.
-Delete this whole section when not applicable.
-
-```mermaid
-flowchart LR
-    A --> B
-```
--->
 
 ## Test plan
 
