@@ -12,4 +12,5 @@ export const manifest: ExerciseManifest = {
   route: '/scale-degree',
 };
 
-// C1.3 will add: createSessionController, SessionView, DashboardView, DashboardWidget.
+export { createSessionController } from './internal/session-controller.svelte';
+export type { SessionController, SessionControllerDeps } from './internal/session-controller.svelte';
