@@ -41,4 +41,17 @@ describe('ReplayBar', () => {
     // Target button should now have active class
     expect(screen.getByRole('button', { name: /target/i })).toHaveClass('active');
   });
+
+  it('play button is disabled when current mode has no buffer; enabled after switching to a mode with a buffer', async () => {
+    const user = userEvent.setup();
+    // Production-initial state: userBuffer present, targetBuffer null.
+    // Default mode is 'target', so Play should be disabled.
+    render(ReplayBar, { userBuffer: fakeBuffer(), targetBuffer: null });
+    const playBtn = screen.getByRole('button', { name: /play/i }) as HTMLButtonElement;
+    expect(playBtn.disabled).toBe(true);
+
+    // Click 'You' — now mode=you and userBuffer is available; Play should be enabled.
+    await user.click(screen.getByRole('button', { name: /you/i }));
+    expect(playBtn.disabled).toBe(false);
+  });
 });

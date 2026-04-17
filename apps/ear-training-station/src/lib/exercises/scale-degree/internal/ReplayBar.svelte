@@ -15,6 +15,13 @@
   let playing = $state(false);
   let ctx: AudioContext | null = null;
   let sources: AudioBufferSourceNode[] = [];
+  let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const canPlay = $derived(
+    (mode === 'you' && userBuffer != null) ||
+    (mode === 'target' && targetBuffer != null) ||
+    (mode === 'both' && userBuffer != null && targetBuffer != null)
+  );
 
   function ensureCtx(): AudioContext {
     if (!ctx) ctx = new AudioContext();
@@ -39,17 +46,20 @@
       if (userBuffer) sources.push(playBuffer(userBuffer, c));
       if (targetBuffer) sources.push(playBuffer(targetBuffer, c));
     }
+    if (sources.length === 0) return;
     playing = true;
     const longest = Math.max(
       ...sources.map((s) => (s.buffer?.duration ?? 0)),
     );
-    setTimeout(() => {
+    resetTimer = setTimeout(() => {
+      resetTimer = null;
       playing = false;
       sources = [];
     }, longest * 1000 + 50);
   }
 
   function stop() {
+    if (resetTimer != null) { clearTimeout(resetTimer); resetTimer = null; }
     sources.forEach((s) => { try { s.stop(); } catch { /* already stopped */ } });
     sources = [];
     playing = false;
@@ -96,7 +106,7 @@
   <button
     type="button"
     class="play"
-    disabled={playing}
+    disabled={playing || !canPlay}
     onclick={play}
     aria-label={playing ? 'Playing' : 'Play'}
   >
