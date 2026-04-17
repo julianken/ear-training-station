@@ -29,8 +29,13 @@ export function pickRegister(
   rng: () => number,
   history: VariabilityHistory,
   settings: VariabilitySettings,
+  available: ReadonlyArray<Register> = REGISTERS,
 ): Register {
-  if (settings.lockedRegister !== null) return settings.lockedRegister;
-  const pool = REGISTERS.filter((r) => r !== history.lastRegister);
-  return pool[Math.floor(rng() * pool.length)]!;
+  if (settings.lockedRegister != null && available.includes(settings.lockedRegister)) {
+    return settings.lockedRegister;
+  }
+  // Filter: avoid repeating the last register; fall back to available if that empties the pool
+  const pool = available.filter((r) => r !== history.lastRegister);
+  const chooseFrom = pool.length > 0 ? pool : available;
+  return chooseFrom[Math.floor(rng() * chooseFrom.length)]!;
 }
