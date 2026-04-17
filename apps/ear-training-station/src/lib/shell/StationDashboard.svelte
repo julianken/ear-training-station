@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import type { Route } from '$app/paths';
   import { exercises } from '$lib/exercises';
 </script>
 
@@ -7,7 +8,7 @@
   <h1 class="title">Choose an exercise</h1>
   <div class="grid">
     {#each exercises as ex (ex.manifest.slug)}
-      <a class="card" href={resolve(ex.manifest.route)}>
+      <a class="card" href={resolve(ex.manifest.route as Route)}>
         <h2 class="card-title">{ex.manifest.name}</h2>
         <p class="card-blurb">{ex.manifest.blurb}</p>
       </a>
