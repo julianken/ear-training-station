@@ -1,3 +1,5 @@
 dist/
 test-results/
 playwright-report/
+.svelte-kit/
+build/
