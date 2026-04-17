@@ -69,4 +69,13 @@ describe('SummaryView', () => {
       expect(dl.querySelector('dt')).not.toBeNull();
     }
   });
+
+  it('puts <dt> label before <dd> value in source order', () => {
+    const { container } = render(SummaryView, { session, attempts });
+    const firstStat = container.querySelector('.stat');
+    expect(firstStat).not.toBeNull();
+    const children = firstStat!.children;
+    expect(children[0].tagName).toBe('DT');
+    expect(children[1].tagName).toBe('DD');
+  });
 });

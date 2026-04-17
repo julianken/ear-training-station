@@ -330,7 +330,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       if (this.#disposed) return;
       this.#disposed = true;
       consecutiveNullCount.set(0);
-      degradationState.update((s) => ({ ...s, kwsUnavailable: false, persistenceFailing: false }));
+      degradationState.update((s) => ({ ...s, kwsUnavailable: false }));
       this.#stopAudioHandles();
     }
 

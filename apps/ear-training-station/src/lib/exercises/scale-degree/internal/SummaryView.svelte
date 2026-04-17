@@ -26,12 +26,12 @@
 
   <div class="stats">
     <dl class="stat">
-      <dd class="n">{session.pitch_pass_count}/{attempts.length}</dd>
       <dt class="stat-label">Pitch</dt>
+      <dd class="n">{session.pitch_pass_count}/{attempts.length}</dd>
     </dl>
     <dl class="stat">
-      <dd class="n">{session.label_pass_count}/{attempts.length}</dd>
       <dt class="stat-label">Label</dt>
+      <dd class="n">{session.label_pass_count}/{attempts.length}</dd>
     </dl>
   </div>
 
@@ -46,7 +46,7 @@
   .title { font-size: 28px; margin: 0 0 4px; color: var(--green); }
   .meta { font-size: 11px; color: var(--muted); margin: 0 0 24px; }
   .stats { display: flex; gap: 16px; justify-content: center; margin: 0 0 24px; }
-  .stat { flex: 1; padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+  .stat { flex: 1; padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column-reverse; }
   .n { font-size: 28px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
   .actions { display: flex; gap: 8px; justify-content: center; }
