@@ -104,7 +104,9 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
         // Persist the attempt and update item SRS state.
         // Use at_ms from the CAPTURE_COMPLETE event as the clock source.
-        const gradedState = this.state as Extract<RoundState, { kind: 'graded' }>;
+        // $state-backed state exposes fields as reactive Proxies, which IndexedDB's
+        // structured-clone cannot serialize. Snapshot at the boundary.
+        const gradedState = $state.snapshot(this.state) as Extract<RoundState, { kind: 'graded' }>;
         const item = gradedState.item;
         const now = event.type === 'CAPTURE_COMPLETE' ? event.at_ms : Date.now();
         const pitchOk = gradedState.outcome.pitch;
