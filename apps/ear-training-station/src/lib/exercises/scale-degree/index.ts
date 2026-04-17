@@ -18,3 +18,4 @@ export { default as ActiveRound } from './internal/ActiveRound.svelte';
 export { default as FeedbackPanel } from './internal/FeedbackPanel.svelte';
 export { default as ReplayBar } from './internal/ReplayBar.svelte';
 export { default as DashboardView } from './internal/DashboardView.svelte';
+export { default as DashboardWidget } from './internal/DashboardWidget.svelte';
