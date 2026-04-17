@@ -1,4 +1,5 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -52,6 +53,57 @@ export default defineConfig({
       },
     },
     sveltekit(),
+    SvelteKitPWA({
+      registerType: 'autoUpdate',
+      strategies: 'generateSW',
+      manifest: {
+        name: 'Ear Training Station',
+        short_name: 'Ear Training',
+        description: 'Practice singing scale degrees by ear',
+        theme_color: '#0a0a0a',
+        background_color: '#0a0a0a',
+        display: 'standalone',
+        start_url: '/',
+        icons: [
+          {
+            src: '/icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
+      },
+      workbox: {
+        // Precache all SvelteKit-generated app shell assets.
+        globPatterns: ['client/**/*.{js,css,ico,png,svg,webmanifest}'],
+        runtimeCaching: [
+          {
+            // Cache TensorFlow Hub model shards loaded by speech-commands at runtime.
+            urlPattern: /^https:\/\/(tfhub\.dev|storage\.googleapis\.com\/tfjs-models)\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tfjs-models-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
+      kit: {
+        // adapter-static uses 'static' as the assets dir by default.
+        assets: 'static',
+      },
+      devOptions: {
+        // Enable in dev only if you want to test SW registration locally.
+        // Keep disabled to avoid SW hijacking HMR in day-to-day development.
+        enabled: false,
+      },
+    }),
   ],
   server: {
     fs: { allow: ['..', '../..'] },

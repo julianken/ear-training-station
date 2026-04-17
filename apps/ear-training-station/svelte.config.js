@@ -18,6 +18,9 @@ const config = {
       '@ear-training/core/*': `${root}packages/core/src/*`,
       '@ear-training/web-platform/*': `${root}packages/web-platform/src/*`,
     },
+    serviceWorker: {
+      register: false,
+    },
   },
 };
 

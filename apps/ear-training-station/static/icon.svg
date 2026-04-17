@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
+  <rect width="192" height="192" fill="#0a0a0a"/>
+  <!-- Musical note shape in cyan -->
+  <ellipse cx="72" cy="138" rx="20" ry="14" fill="#22d3ee"/>
+  <rect x="88" y="70" width="8" height="72" fill="#22d3ee"/>
+  <rect x="88" y="70" width="40" height="8" fill="#22d3ee"/>
+  <rect x="120" y="70" width="8" height="40" fill="#22d3ee"/>
+  <ellipse cx="128" cy="108" rx="20" ry="14" fill="#22d3ee"/>
+</svg>

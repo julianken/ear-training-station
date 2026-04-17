@@ -25,8 +25,10 @@
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/svelte": "5.3.1",
     "@testing-library/user-event": "14.6.1",
+    "@vite-pwa/sveltekit": "1.1.0",
     "svelte": "5.55.4",
     "svelte-check": "4.4.6",
-    "vite": "8.0.8"
+    "vite": "8.0.8",
+    "workbox-window": "7.4.0"
   }
 }
