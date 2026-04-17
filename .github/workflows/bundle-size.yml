@@ -4,9 +4,9 @@
 # which includes sw.js + workbox-*.js since the PWA plugin emits them there):
 #   client total: 1,319,728 bytes (~1.26 MiB)
 #   sw.js + workbox-*.js combined: 25,231 bytes (~24.6 KiB)
-# Headroom: ~20% rounded to memorable MiB/KiB boundaries.
-#   BUDGET_CLIENT = 2,097,152 = 2 MiB
-#   BUDGET_SW     =    51,200 = 50 KiB
+# Headroom rounded to memorable MiB/KiB boundaries:
+#   BUDGET_CLIENT = 2,097,152 = 2 MiB (~59% over current — generous to cover tfjs/tone growth)
+#   BUDGET_SW     =    51,200 = 50 KiB (~103% over current — generous; SW artifacts are small and stable)
 #
 name: Bundle Size
 
@@ -59,7 +59,8 @@ jobs:
           CLIENT_DIR="apps/ear-training-station/.svelte-kit/output/client"
           CLIENT_SIZE=$(du -sb "$CLIENT_DIR" | awk '{print $1}')
           SW_JS="$CLIENT_DIR/sw.js"
-          SW_SIZE=$(du -cb "$SW_JS" "$CLIENT_DIR"/workbox-*.js 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
+          SW_SIZE=$(du -cb "$SW_JS" "$CLIENT_DIR"/workbox-*.js 2>/dev/null | tail -1 | awk '{print $1}')
+          SW_SIZE=${SW_SIZE:-0}
           echo "Client bundle: $CLIENT_SIZE bytes (budget: $BUDGET_CLIENT)"
           echo "SW artifacts:  $SW_SIZE bytes (budget: $BUDGET_SW)"
           FAIL=0
