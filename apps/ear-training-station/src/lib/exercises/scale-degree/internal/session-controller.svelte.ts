@@ -15,7 +15,7 @@ import { availableRegisters } from '@ear-training/core/scheduler/register-gating
 import { buildAttemptPersistence } from '@ear-training/core/round/persistence';
 import { nextBoxOnPass, nextBoxOnMiss } from '@ear-training/core/srs/leitner';
 import { SvelteMap } from 'svelte/reactivity';
-import { consecutiveNullCount } from '$lib/shell/stores';
+import { allItems, consecutiveNullCount } from '$lib/shell/stores';
 
 export interface SessionControllerDeps {
   session: Session;
@@ -143,6 +143,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         try {
           await deps.attemptsRepo.append(attempt);
           await deps.itemsRepo.put(updatedItem);
+          // Mirror the updated item into the in-memory read model so the
+          // dashboard reflects the new state without a hard reload.
+          allItems.update((items) => {
+            const idx = items.findIndex((i) => i.id === updatedItem.id);
+            if (idx === -1) return [...items, updatedItem];
+            const copy = [...items];
+            copy[idx] = updatedItem;
+            return copy;
+          });
           // Update running counters only after both writes succeed — keeps
           // controller state consistent with the DB on partial failure.
           this.#reviewsInBox.set(item.id, reviewsInCurrentBox);

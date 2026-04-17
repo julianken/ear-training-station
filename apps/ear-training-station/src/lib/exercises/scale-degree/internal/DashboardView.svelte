@@ -16,11 +16,19 @@
   const keyMastery = derived(allItems, ($items) => masteryByKey($items));
   const boxes = derived(allItems, ($items) => leitnerCounts($items));
 
+  let starting = $state(false);
+
   async function start() {
-    const deps = await getDeps();
-    const id = crypto.randomUUID();
-    const session = await deps.sessions.start({ id, target_items: 30, started_at: Date.now() });
-    await goto(resolve(`/scale-degree/sessions/${session.id}`));
+    if (starting) return;
+    starting = true;
+    try {
+      const deps = await getDeps();
+      const id = crypto.randomUUID();
+      const session = await deps.sessions.start({ id, target_items: 30, started_at: Date.now() });
+      await goto(resolve(`/scale-degree/sessions/${session.id}`));
+    } finally {
+      starting = false;
+    }
   }
 
   const degrees: Degree[] = [1, 2, 3, 4, 5, 6, 7];
@@ -38,7 +46,7 @@
   <h1 class="title">Scale-Degree Practice</h1>
 
   <div class="start-row">
-    <button type="button" class="start" onclick={start}>Start today's session</button>
+    <button type="button" class="start" onclick={start} disabled={starting}>Start today's session</button>
   </div>
 
   <section class="card">
@@ -66,10 +74,13 @@
         <span class="quality-label">maj</span>
         {#each PITCH_CLASSES as pc (`${pc}-major`)}
           {@const cid = `${pc}-major`}
+          {@const m = $keyMastery.get(cid) ?? 0}
           <div
             class="heat-cell"
-            title="{pc} major: {Math.round(($keyMastery.get(cid) ?? 0) * 100)}%"
-            style="background: {masteryColor($keyMastery.get(cid))}"
+            role="img"
+            aria-label="{pc} major — {Math.round(m * 100)}% mastery"
+            title="{pc} major: {Math.round(m * 100)}%"
+            style="background: {masteryColor(m)}"
           ></div>
         {/each}
       </div>
@@ -77,10 +88,13 @@
         <span class="quality-label">min</span>
         {#each PITCH_CLASSES as pc (`${pc}-minor`)}
           {@const cid = `${pc}-minor`}
+          {@const m = $keyMastery.get(cid) ?? 0}
           <div
             class="heat-cell"
-            title="{pc} minor: {Math.round(($keyMastery.get(cid) ?? 0) * 100)}%"
-            style="background: {masteryColor($keyMastery.get(cid))}"
+            role="img"
+            aria-label="{pc} minor — {Math.round(m * 100)}% mastery"
+            title="{pc} minor: {Math.round(m * 100)}%"
+            style="background: {masteryColor(m)}"
           ></div>
         {/each}
       </div>

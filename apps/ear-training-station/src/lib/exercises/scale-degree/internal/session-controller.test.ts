@@ -3,7 +3,7 @@ import { get } from 'svelte/store';
 import { createSessionController } from './session-controller.svelte';
 import type { Item, Session } from '@ear-training/core/types/domain';
 import type { RoundState } from '@ear-training/core/round/state';
-import { consecutiveNullCount } from '$lib/shell/stores';
+import { allItems, consecutiveNullCount } from '$lib/shell/stores';
 
 /** Flush all pending microtasks so async fire-and-forget dispatches complete. */
 async function flushPromises(): Promise<void> {
@@ -271,6 +271,11 @@ describe('SessionController — next()', () => {
 });
 
 describe('SessionController — attempt persistence on graded transition', () => {
+  beforeEach(() => {
+    // Reset allItems store between tests to prevent cross-test leakage.
+    allItems.set([]);
+  });
+
   // Helper: build a CAPTURE_COMPLETE-like graded state via _checkCaptureEnd.
   // Uses _forceState to set up the listening state, then calls _checkCaptureEnd
   // to trigger the real graded transition including persistence.
@@ -333,6 +338,60 @@ describe('SessionController — attempt persistence on graded transition', () =>
     expect(appendArg.item_id).toBe(baseItem.id);
     // Both pitch and label pass (hz=392 ≈ G4 = degree 5 of C major; digit=5 = degree 5)
     expect(appendArg.graded.pass).toBe(true);
+  });
+
+  it('updates allItems store with the new item state after successful persistence', async () => {
+    const deps = makeDeps();
+    const ctrl = createSessionController(deps);
+
+    // Seed the store with the base item so the update path (not append path) is exercised.
+    allItems.set([baseItem]);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    const stored = get(allItems);
+    expect(stored).toHaveLength(1);
+    const updatedInStore = stored.find((i) => i.id === baseItem.id);
+    expect(updatedInStore).toBeDefined();
+    // After a pass the box should have advanced and attempts should be incremented.
+    expect(updatedInStore!.attempts).toBe(1);
+    expect(updatedInStore!.box).toBe('learning');
+  });
+
+  it('appends to allItems store when item id is not already present', async () => {
+    const deps = makeDeps();
+    const ctrl = createSessionController(deps);
+
+    // Store is empty — the updated item should be appended.
+    allItems.set([]);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    const stored = get(allItems);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]!.id).toBe(baseItem.id);
+    expect(stored[0]!.attempts).toBe(1);
+  });
+
+  it('does not update allItems store when persistence fails', async () => {
+    const deps = makeDeps();
+    deps.itemsRepo.put = vi.fn(async () => { throw new Error('quota exceeded'); });
+    const ctrl = createSessionController(deps);
+
+    allItems.set([baseItem]);
+
+    setupListening(ctrl);
+    ctrl._checkCaptureEnd();
+    await flushPromises();
+
+    // put threw — allItems must remain at the original (pre-round) state.
+    const stored = get(allItems);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]!.attempts).toBe(0); // unchanged
   });
 
   it('running #pitchPasses / #labelPasses are reflected in session completion', async () => {
