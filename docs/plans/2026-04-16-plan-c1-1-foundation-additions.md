@@ -290,7 +290,7 @@ const item: Item = {
   degree: 5,
   key: { tonic: 'C', quality: 'major' },
   box: 'new',
-  accuracy: { count: 0, pass_count: 0 },
+  accuracy: { pitch: 0, label: 0 },
   recent: [],
   attempts: 0,
   consecutive_passes: 0,
@@ -535,7 +535,7 @@ describe('roundReducer — listening + CAPTURE_COMPLETE → graded', () => {
     degree: 5,
     key: { tonic: 'C', quality: 'major' },
     box: 'new',
-    accuracy: { count: 0, pass_count: 0 },
+    accuracy: { pitch: 0, label: 0 },
     recent: [],
     attempts: 0,
     consecutive_passes: 0,
@@ -746,7 +746,7 @@ import type { Item } from '@/types/domain';
 function itemInBox(id: string, box: Item['box']): Item {
   return {
     id, degree: 5, key: { tonic: 'C', quality: 'major' },
-    box, accuracy: { count: 0, pass_count: 0 },
+    box, accuracy: { pitch: 0, label: 0 },
     recent: [], attempts: 0, consecutive_passes: 0,
     last_seen_at: null, due_at: 0, created_at: 0,
   };

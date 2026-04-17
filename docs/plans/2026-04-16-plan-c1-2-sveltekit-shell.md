@@ -297,7 +297,7 @@ import type { Settings } from '@ear-training/core/types/domain';
 /** Seed IndexedDB with an onboarded settings row so the shell doesn't redirect. */
 export async function seedOnboarded(page: Page, overrides: Partial<Settings> = {}): Promise<void> {
   await page.addInitScript((settings) => {
-    const req = indexedDB.open('EarTrainingDB', 1);
+    const req = indexedDB.open('ear-training', 1);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
@@ -322,7 +322,7 @@ export async function seedOnboarded(page: Page, overrides: Partial<Settings> = {
 /** Clear all app IndexedDB data before the test (fresh-user state). */
 export async function resetAppState(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    indexedDB.deleteDatabase('EarTrainingDB');
+    indexedDB.deleteDatabase('ear-training');
   });
 }
 ```

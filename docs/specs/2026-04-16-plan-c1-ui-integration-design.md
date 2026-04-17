@@ -96,7 +96,7 @@ export { default as DashboardWidget } from './internal/DashboardWidget.svelte';
 
 ### 8. Chord-block animation — derive client-side from `AudioContext`
 
-**Decision:** UI reads `cadenceStartAtAcTime` from the `playRound` handle plus `ChordEvent.startTimeSec` from the cadence array. A requestAnimationFrame loop reads `audioContext.currentTime` and flags each chord block as `active` when its range contains the current time. Same pattern drives the pitch-trace "now" indicator.
+**Decision:** UI derives the cadence start time from the existing `PlayRoundHandle.targetStartAtAcTime: Promise<number>` minus `CADENCE_DURATION_SECONDS` (a constant already exported by `@ear-training/core/audio/cadence-structure`), then reads each chord's `startSec` from the `ChordEvent[]` array. A requestAnimationFrame loop reads `audioContext.currentTime` and flags each chord block as `active` when its `[cadenceStart + chord.startSec, cadenceStart + chord.startSec + chord.durationSec]` range contains the current time. Same pattern drives the pitch-trace "now" indicator.
 **Alternatives:** extend `playRound` with an `onChordStart?` callback; return an event emitter from `playRound`.
 **Rationale:** zero change to the `playRound` contract; audio layer stays decoupled from visual concerns; visual timing is anchored to the same clock (`audioContext.currentTime`) the audio is anchored to.
 
@@ -262,7 +262,7 @@ Two `AudioContext`s exist by design (C0 decision). UI never mixes them.
 ### Reactive visuals
 
 - **Pitch trace** — SVG polyline bound to `controller.state.frames` via `$derived`. Target band = cyan dashed rect spanning ±50¢ around the target degree.
-- **Chord blocks** — each block's `active` flag = `audioContext.currentTime ∈ [chordStart, chordEnd]` where `chordStart = cadenceStartAtAcTime + chord.startTimeSec`.
+- **Chord blocks** — each block's `active` flag = `audioContext.currentTime ∈ [chordStart, chordEnd]` where `chordStart = cadenceStartAcTime + chord.startSec`, and `cadenceStartAcTime` is derived from `await playHandle.targetStartAtAcTime - CADENCE_DURATION_SECONDS`.
 - **"Now" indicator** — one `requestAnimationFrame` loop per session reading `audioContext.currentTime`.
 
 No polling for state updates — all driven by reducer events. One rAF per session just for the cursor position.

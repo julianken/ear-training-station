@@ -63,7 +63,7 @@ test('denying mic permission shows the gate with per-browser instructions', asyn
   await context.clearPermissions();
   // Seed a session + item
   await page.addInitScript(() => {
-    const req = indexedDB.open('EarTrainingDB', 1);
+    const req = indexedDB.open('ear-training', 1);
     req.onsuccess = () => {
       const tx = req.result.transaction(['sessions', 'items'], 'readwrite');
       tx.objectStore('sessions').put({
@@ -73,7 +73,7 @@ test('denying mic permission shows the gate with per-browser instructions', asyn
       });
       tx.objectStore('items').put({
         id: '5-C-major', degree: 5, key: { tonic: 'C', quality: 'major' },
-        box: 'new', accuracy: { count: 0, pass_count: 0 }, recent: [],
+        box: 'new', accuracy: { pitch: 0, label: 0 }, recent: [],
         attempts: 0, consecutive_passes: 0, last_seen_at: null,
         due_at: Date.now() - 1000, created_at: 0,
       });
@@ -259,11 +259,11 @@ test('degradation banner shows when KWS model fails to load', async ({ page, con
 
   // Seed session + item (same as mic-denied)
   await page.addInitScript(() => {
-    const req = indexedDB.open('EarTrainingDB', 1);
+    const req = indexedDB.open('ear-training', 1);
     req.onsuccess = () => {
       const tx = req.result.transaction(['sessions', 'items'], 'readwrite');
       tx.objectStore('sessions').put({ id: 'deg-1', started_at: Date.now(), ended_at: null, target_items: 30, completed_items: 0, pitch_pass_count: 0, label_pass_count: 0, focus_item_id: null });
-      tx.objectStore('items').put({ id: '5-C-major', degree: 5, key: { tonic: 'C', quality: 'major' }, box: 'new', accuracy: { count: 0, pass_count: 0 }, recent: [], attempts: 0, consecutive_passes: 0, last_seen_at: null, due_at: Date.now() - 1000, created_at: 0 });
+      tx.objectStore('items').put({ id: '5-C-major', degree: 5, key: { tonic: 'C', quality: 'major' }, box: 'new', accuracy: { pitch: 0, label: 0 }, recent: [], attempts: 0, consecutive_passes: 0, last_seen_at: null, due_at: Date.now() - 1000, created_at: 0 });
     };
   });
 

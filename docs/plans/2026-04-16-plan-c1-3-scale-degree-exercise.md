@@ -67,7 +67,7 @@ const baseItem: Item = {
   degree: 5,
   key: { tonic: 'C', quality: 'major' },
   box: 'new',
-  accuracy: { count: 0, pass_count: 0 },
+  accuracy: { pitch: 0, label: 0 },
   recent: [],
   attempts: 0,
   consecutive_passes: 0,
@@ -341,7 +341,7 @@ test('visiting a session with no ended_at marks it abandoned and renders summary
   await seedOnboarded(page);
   // Seed a session row with ended_at = null directly.
   await page.addInitScript(() => {
-    const req = indexedDB.open('EarTrainingDB', 1);
+    const req = indexedDB.open('ear-training', 1);
     req.onsuccess = () => {
       const tx = req.result.transaction('sessions', 'readwrite');
       tx.objectStore('sessions').put({
@@ -498,15 +498,15 @@ import ChordBlocks from './ChordBlocks.svelte';
 import type { ChordEvent } from '@ear-training/core/audio/cadence-structure';
 
 const cadence: ChordEvent[] = [
-  { chord: 'I',  startTimeSec: 0.0, durationSec: 0.8 },
-  { chord: 'IV', startTimeSec: 0.8, durationSec: 0.8 },
-  { chord: 'V',  startTimeSec: 1.6, durationSec: 0.8 },
-  { chord: 'I',  startTimeSec: 2.4, durationSec: 0.8 },
+  { notes: [60, 64, 67], startSec: 0.0, durationSec: 0.7, romanNumeral: 'I'  },
+  { notes: [65, 69, 72], startSec: 0.8, durationSec: 0.7, romanNumeral: 'IV' },
+  { notes: [67, 71, 74], startSec: 1.6, durationSec: 0.7, romanNumeral: 'V'  },
+  { notes: [60, 64, 67], startSec: 2.4, durationSec: 0.7, romanNumeral: 'I'  },
 ];
 
 describe('ChordBlocks', () => {
   it('renders 4 blocks labeled I, IV, V, I', () => {
-    render(ChordBlocks, { cadence, cadenceStartAtAcTime: 0, getCurrentTime: () => 0 });
+    render(ChordBlocks, { cadence, cadenceStartAcTime: 0, getCurrentTime: () => 0 });
     const blocks = screen.getAllByRole('listitem');
     expect(blocks.length).toBe(4);
   });
@@ -514,8 +514,8 @@ describe('ChordBlocks', () => {
   it('marks the currently-playing chord as active based on currentTime', () => {
     const { container } = render(ChordBlocks, {
       cadence,
-      cadenceStartAtAcTime: 0,
-      // pretend we're 1.0s into playback → block 2 (IV, 0.8–1.6) is active
+      cadenceStartAcTime: 0,
+      // pretend we're 1.0s into playback → block 2 (IV, 0.8–1.5) is active
       getCurrentTime: () => 1.0,
     });
     const active = container.querySelectorAll('.active');
@@ -543,11 +543,11 @@ Create `apps/ear-training-station/src/lib/exercises/scale-degree/internal/ChordB
 
   let {
     cadence,
-    cadenceStartAtAcTime,
+    cadenceStartAcTime,
     getCurrentTime,
   }: {
     cadence: ChordEvent[];
-    cadenceStartAtAcTime: number;
+    cadenceStartAcTime: number;  // derived in parent: targetStartAtAcTime - CADENCE_DURATION_SECONDS
     getCurrentTime: () => number;
   } = $props();
 
@@ -568,13 +568,13 @@ Create `apps/ear-training-station/src/lib/exercises/scale-degree/internal/ChordB
   });
 
   function isActive(chord: ChordEvent, now: number): boolean {
-    const start = cadenceStartAtAcTime + chord.startTimeSec;
+    const start = cadenceStartAcTime + chord.startSec;
     const end = start + chord.durationSec;
     return now >= start && now < end;
   }
 
   function isPlayed(chord: ChordEvent, now: number): boolean {
-    return now >= cadenceStartAtAcTime + chord.startTimeSec + chord.durationSec;
+    return now >= cadenceStartAcTime + chord.startSec + chord.durationSec;
   }
 </script>
 
@@ -585,7 +585,7 @@ Create `apps/ear-training-station/src/lib/exercises/scale-degree/internal/ChordB
       class:played={!isActive(chord, now) && isPlayed(chord, now)}
       role="listitem"
     >
-      <span class="label">{chord.chord}</span>
+      <span class="label">{chord.romanNumeral}</span>
     </li>
   {/each}
 </ul>
@@ -647,7 +647,7 @@ git add apps/ear-training-station/src/lib/exercises/scale-degree/internal/ChordB
 git commit -m "$(cat <<'EOF'
 feat(exercise): ChordBlocks component
 
-4 chord blocks drived by cadenceStartAtAcTime + currentTime.
+4 chord blocks driven by (cadenceStartAcTime = targetStartAtAcTime - CADENCE_DURATION_SECONDS) + chord.startSec vs audioContext.currentTime.
 Each block flags active/played based on audioContext clock
 via a rAF loop. No playRound API changes.
 
@@ -1007,7 +1007,7 @@ Create `apps/ear-training-station/src/lib/exercises/scale-degree/internal/Active
   <div class="top-zone" class:listening={controller.state.kind === 'playing_cadence'}>
     <ChordBlocks
       cadence={cadence}
-      cadenceStartAtAcTime={0 /* Task 6 passes real value */}
+      cadenceStartAcTime={0 /* Task 6 passes real value: targetStartAtAcTime - CADENCE_DURATION_SECONDS */}
       getCurrentTime={() => 0}
     />
     <TargetDisplay
@@ -1382,7 +1382,7 @@ test('graded state renders FeedbackPanel and ReplayBar (seeded via test hook)', 
 
   // Seed an active session.
   await page.addInitScript(() => {
-    const req = indexedDB.open('EarTrainingDB', 1);
+    const req = indexedDB.open('ear-training', 1);
     req.onsuccess = () => {
       const tx = req.result.transaction(['sessions', 'items'], 'readwrite');
       tx.objectStore('sessions').put({
@@ -1393,7 +1393,7 @@ test('graded state renders FeedbackPanel and ReplayBar (seeded via test hook)', 
       // Seed at least one due item so the session route can construct a controller.
       tx.objectStore('items').put({
         id: '5-C-major', degree: 5, key: { tonic: 'C', quality: 'major' },
-        box: 'new', accuracy: { count: 0, pass_count: 0 }, recent: [],
+        box: 'new', accuracy: { pitch: 0, label: 0 }, recent: [],
         attempts: 0, consecutive_passes: 0, last_seen_at: null,
         due_at: Date.now() - 1000, created_at: 0,
       });
@@ -1547,7 +1547,7 @@ import FeedbackPanel from './FeedbackPanel.svelte';
 
 const graded = {
   kind: 'graded' as const,
-  item: { id: '5-C-major', degree: 5 as const, key: { tonic: 'C' as const, quality: 'major' as const }, box: 'new' as const, accuracy: { count: 0, pass_count: 0 }, recent: [], attempts: 0, consecutive_passes: 0, last_seen_at: null, due_at: 0, created_at: 0 },
+  item: { id: '5-C-major', degree: 5 as const, key: { tonic: 'C' as const, quality: 'major' as const }, box: 'new' as const, accuracy: { pitch: 0, label: 0 }, recent: [], attempts: 0, consecutive_passes: 0, last_seen_at: null, due_at: 0, created_at: 0 },
   timbre: 'piano' as const,
   register: 'comfortable' as const,
   outcome: { pitch: true, label: true, pass: true, at: 0 },
@@ -2447,7 +2447,7 @@ import { seedOnboarded } from './helpers/app-state';
 test('viewing a completed session renders the summary report card', async ({ page }) => {
   await seedOnboarded(page);
   await page.addInitScript(() => {
-    const req = indexedDB.open('EarTrainingDB', 1);
+    const req = indexedDB.open('ear-training', 1);
     req.onsuccess = () => {
       const tx = req.result.transaction(['sessions', 'attempts'], 'readwrite');
       tx.objectStore('sessions').put({
@@ -2528,7 +2528,7 @@ git checkout -b c1-3/task12-onboarding-warmup
     degree: 5,
     key: { tonic: 'C', quality: 'major' },
     box: 'new',
-    accuracy: { count: 0, pass_count: 0 },
+    accuracy: { pitch: 0, label: 0 },
     recent: [],
     attempts: 0,
     consecutive_passes: 0,
