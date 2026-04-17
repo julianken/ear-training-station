@@ -10,6 +10,27 @@ export type DegradationState = 'ok' | 'kws-unavailable';
 export const degradationState = writable<DegradationState>('ok');
 export const consecutiveNullCount = writable(0);
 
+export type ToastLevel = 'info' | 'warn' | 'error';
+export interface Toast {
+  id: string;
+  message: string;
+  level: ToastLevel;
+  createdAt: number;
+}
+
+export const pendingToasts = writable<Toast[]>([]);
+
+export function pushToast(input: Omit<Toast, 'id' | 'createdAt'>): string {
+  const id = crypto.randomUUID();
+  const toast: Toast = { id, createdAt: Date.now(), ...input };
+  pendingToasts.update((ts) => [...ts, toast]);
+  return id;
+}
+
+export function dismissToast(id: string): void {
+  pendingToasts.update((ts) => ts.filter((t) => t.id !== id));
+}
+
 export async function hydrateShellStores(): Promise<void> {
   const deps = await getDeps();
   const [s, items, sessions] = await Promise.all([
