@@ -3,14 +3,13 @@
   import { allSessions } from './stores';
   import { currentStreak } from '@ear-training/core/analytics/rollups';
 
-  // Each session carries its own `tz_offset_ms` (stamped at session
-  // creation), so day-index is anchored to the zone the user actually
-  // practiced in — even if the viewer's current offset has shifted across
-  // a DST boundary or timezone. `currentStreak` per-session handles that
-  // internally; no render-time offset needed here. Legacy rows without
-  // the field fall back to UTC.
+  // Pass the viewer's current offset as the "today" anchor so the streak
+  // window is computed in local wall-clock time. Per-session tz_offset_ms
+  // (stamped at creation) is used by currentStreak() for placing each
+  // session on the correct calendar day — the two are independent.
+  const tzOffsetMs = -new Date().getTimezoneOffset() * 60_000;
   const streak = derived(allSessions, ($sessions) =>
-    currentStreak($sessions, Date.now()),
+    currentStreak($sessions, Date.now(), tzOffsetMs),
   );
 </script>
 
