@@ -33,7 +33,7 @@ export default tseslint.config(
       // agentic guardrail (Plan C2 Task 8, issue #108). Any intentional
       // fire-and-forget must suppress with // eslint-disable-next-line and
       // a prose justification; do NOT use the `void` operator.
-      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
     },
   },
 
