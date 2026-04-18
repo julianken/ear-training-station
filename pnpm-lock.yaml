@@ -51,6 +51,9 @@ importers:
       '@axe-core/playwright':
         specifier: 4.11.2
         version: 4.11.2(playwright-core@1.59.1)
+      '@ear-training/e2e-audio-testing':
+        specifier: workspace:*
+        version: link:../../packages/e2e-audio-testing
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -92,6 +95,19 @@ importers:
         version: 7.4.0
 
   packages/core: {}
+
+  packages/e2e-audio-testing:
+    dependencies:
+      wavefile:
+        specifier: ^11.0.0
+        version: 11.0.0
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.0
+        version: 1.59.1
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
 
   packages/ui-tokens: {}
 
@@ -2936,6 +2952,11 @@ packages:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: '>=4.8.4 <6.1.0'
 
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   typescript@6.0.2:
     resolution: {integrity: sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ==}
     engines: {node: '>=14.17'}
@@ -3134,6 +3155,11 @@ packages:
   w3c-xmlserializer@5.0.0:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
+
+  wavefile@11.0.0:
+    resolution: {integrity: sha512-/OBiAALgWU24IG7sC84cDO/KfFuvajWc5Uec0oV2zrpOOZZDgGdOwHwgEzOrwh8jkubBk7PtZfQBIcI1OaE5Ng==}
+    engines: {node: '>=8'}
+    hasBin: true
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -6265,6 +6291,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  typescript@5.9.3: {}
+
   typescript@6.0.2: {}
 
   unbox-primitive@1.1.0:
@@ -6499,6 +6527,8 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
+
+  wavefile@11.0.0: {}
 
   webidl-conversions@3.0.1: {}
 

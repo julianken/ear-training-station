@@ -8,6 +8,7 @@
   import { dev } from '$app/environment';
   import { page } from '$app/state';
   import { queryMicPermission } from '@ear-training/web-platform/mic/permission';
+  import type { RoundState } from '@ear-training/core/round/state';
 
   let { data } = $props();
 
@@ -56,8 +57,15 @@
     });
 
     if (dev || import.meta.env.MODE === 'test') {
+      const c = controller;
       // @ts-expect-error e2e hook — not present in production bundles
-      window.__sessionControllerForTest = controller;
+      window.__sessionControllerForTest = {
+        getState: () => $state.snapshot(c.state),
+        get currentItem() { return c.currentItem; },
+        _forceState: (s: RoundState) => c._forceState(s),
+        _onPitchFrame: (f: { hz: number; confidence: number }) => c._onPitchFrame(f),
+        _checkCaptureEnd: () => c._checkCaptureEnd(),
+      };
     }
   });
 
