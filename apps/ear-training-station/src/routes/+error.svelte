@@ -1,18 +1,18 @@
 <script lang="ts">
-  interface Props { status: number; error: App.Error | null }
-  const { status, error }: Props = $props();
+  import { page } from '$app/state';
+  import { resolve } from '$app/paths';
 </script>
 
 <svelte:head><title>Error — Ear Training Station</title></svelte:head>
 
 <main class="error-page">
   <div class="error-card">
-    <span class="status-code">{status}</span>
+    <span class="status-code">{page.status}</span>
     <h1 class="error-heading">Something went wrong</h1>
-    {#if error?.message}
-      <p class="error-detail">{error.message}</p>
+    {#if page.error?.message}
+      <p class="error-detail">{page.error.message}</p>
     {/if}
-    <a href="/" class="home-link">Back to home</a>
+    <a href={resolve('/')} class="home-link">Back to home</a>
   </div>
 </main>
 
