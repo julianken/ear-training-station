@@ -1,11 +1,16 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  const { status, error } = $props<{ status: number; error: App.Error | null }>();
 </script>
+
+<svelte:head><title>Error — Ear Training Station</title></svelte:head>
 
 <main class="error-page">
   <div class="error-card">
-    <span class="status-code">{$page.status}</span>
-    <h1 class="error-message">{$page.error?.message ?? 'Something went wrong'}</h1>
+    <span class="status-code">{status}</span>
+    <h1 class="error-heading">Something went wrong</h1>
+    {#if error?.message}
+      <p class="error-detail">{error.message}</p>
+    {/if}
     <a href="/" class="home-link">Back to home</a>
   </div>
 </main>
@@ -41,11 +46,17 @@
     color: var(--red);
   }
 
-  .error-message {
+  .error-heading {
     margin: 0;
     font-size: 1.125rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text);
+  }
+
+  .error-detail {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--muted);
   }
 
   .home-link {
