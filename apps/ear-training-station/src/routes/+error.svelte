@@ -1,5 +1,6 @@
 <script lang="ts">
-  const { status, error } = $props<{ status: number; error: App.Error | null }>();
+  interface Props { status: number; error: App.Error | null }
+  const { status, error }: Props = $props();
 </script>
 
 <svelte:head><title>Error — Ear Training Station</title></svelte:head>
