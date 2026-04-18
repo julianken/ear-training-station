@@ -139,6 +139,37 @@ describe('SessionController — capture-end + CAPTURE_COMPLETE', () => {
       vi.restoreAllMocks();
     }
   });
+
+  it('does NOT auto-advance to graded when auto_advance_on_hit=false, even on a passing grade', () => {
+    // Regression for GitHub #114 / Plan C2 Task 6: the Settings toggle for
+    // `auto_advance_on_hit` was persisted to IDB but never read by the
+    // controller. With the setting off, a confident hit must keep the state
+    // in `listening` so the 5s timer (or a manual Next) drives the
+    // transition — not the per-frame checker.
+    const ctrl = createSessionController(makeDeps());
+    ctrl._forceSettings({
+      function_tooltip: true,
+      auto_advance_on_hit: false,
+      session_length: 30,
+      reduced_motion: 'auto',
+      onboarded: true,
+    });
+    ctrl._forceState({
+      kind: 'listening',
+      item: baseItem, timbre: 'piano', register: 'comfortable',
+      targetStartedAt: 0,
+      // Confident, correct pitch (G4 ≈ 392Hz = degree 5 of C major) + correct digit.
+      frames: [{ at_ms: 100, hz: 392, confidence: 0.95 }],
+      digit: 5,
+      digitConfidence: 0.9,
+    } as never);
+
+    ctrl._checkCaptureEnd();
+
+    // With auto_advance_on_hit OFF, the controller must stay in listening;
+    // the grade is a pass but the transition is deferred to the 5s timer.
+    expect(ctrl.state.kind).toBe('listening');
+  });
 });
 
 // A graded state fixture used by variability and next() tests.
@@ -726,5 +757,22 @@ describe('SessionController — startRound() rejection propagation (GitHub #106 
     await ctrl.startRound().catch(() => {});
 
     expect(ctrl.state.kind).toBe('idle');
+  });
+});
+
+describe('SessionController — settings read path (GitHub #114 / Plan C2 Task 6)', () => {
+  it('startRound() calls settingsRepo.getOrDefault() exactly once across rounds', async () => {
+    // The controller should load settings lazily on the first round and reuse
+    // the snapshot for the life of the session. This matches the
+    // getAudioContext() memoization pattern used for the AudioContext.
+    const deps = makeDeps();
+    const ctrl = createSessionController(deps);
+
+    await ctrl.startRound().catch(() => {});
+    // Drive back to idle to allow a second startRound() past its kind-guard.
+    ctrl._forceState({ kind: 'idle' } as never);
+    await ctrl.startRound().catch(() => {});
+
+    expect(deps.settingsRepo.getOrDefault).toHaveBeenCalledTimes(1);
   });
 });

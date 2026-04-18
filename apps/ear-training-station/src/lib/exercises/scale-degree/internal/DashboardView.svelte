@@ -1,6 +1,6 @@
 <script lang="ts">
   import { derived } from 'svelte/store';
-  import { allItems } from '$lib/shell/stores';
+  import { allItems, settings } from '$lib/shell/stores';
   import { getDeps } from '$lib/shell/deps';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -11,6 +11,7 @@
   } from '@ear-training/core/analytics/rollups';
   import { PITCH_CLASSES } from '@ear-training/core/types/music';
   import type { Degree } from '@ear-training/core/types/music';
+  import { get } from 'svelte/store';
 
   const degreeMastery = derived(allItems, ($items) => masteryByDegree($items));
   const keyMastery = derived(allItems, ($items) => masteryByKey($items));
@@ -24,7 +25,13 @@
     try {
       const deps = await getDeps();
       const id = crypto.randomUUID();
-      const session = await deps.sessions.start({ id, target_items: 30, started_at: Date.now() });
+      // target_items honors the user's `session_length` preference (20/30/45).
+      // The settings store is hydrated at shell mount; reading via get() is
+      // synchronous and returns the current value — no extra IDB round-trip.
+      // Fallback to the default (30) if the store hasn't hydrated yet, which
+      // only happens in degenerate cases (e.g., persistence failure).
+      const targetItems = get(settings).session_length;
+      const session = await deps.sessions.start({ id, target_items: targetItems, started_at: Date.now() });
       await goto(resolve(`/scale-degree/sessions/${session.id}`));
     } finally {
       starting = false;
