@@ -141,6 +141,33 @@ describe('ActiveRound — startRound() error surfacing (GitHub #106 / Plan C2 Ta
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('clears micPermissionDenied after a successful retry (user granted access in browser settings)', async () => {
+    // Regression guard for the review finding on PR #126: previously the catch
+    // block flipped `micPermissionDenied` to true but nothing ever flipped it
+    // back. Realistic flow: user denies mic → banner appears → user grants in
+    // browser settings → clicks Start again → round starts — but the banner
+    // stayed on screen for the rest of the session. The success path must
+    // clear the stale flag so the persistent banner matches reality.
+    let attempt = 0;
+    const micErr = Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' });
+    const controller = {
+      ...baseControllerShape,
+      startRound: vi.fn(async () => {
+        attempt++;
+        if (attempt === 1) throw micErr;
+      }),
+    } as never;
+
+    render(ActiveRound, { controller });
+
+    const button = screen.getByRole('button', { name: /start round/i });
+    await userEvent.click(button);
+    expect(get(degradationState).micPermissionDenied).toBe(true);
+
+    await userEvent.click(button);
+    expect(get(degradationState).micPermissionDenied).toBe(false);
+  });
+
   it('matches mic errors by DOMException code "unavailable" (no Permissions API)', async () => {
     // `requestMicStream` throws an Error with `code: 'unavailable'` when the
     // browser lacks the API entirely (e.g. older Safari, insecure context).

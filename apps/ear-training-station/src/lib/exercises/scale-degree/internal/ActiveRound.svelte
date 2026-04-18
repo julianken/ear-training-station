@@ -101,6 +101,15 @@
     startError = null;
     try {
       await controller.startRound();
+      // Clear any stale mic-permission flag from a prior failed attempt. Without
+      // this, a user who denies mic access, grants it in browser settings, and
+      // then successfully starts a round would still see the "Microphone access
+      // blocked" banner for the rest of the session (until page reload). The
+      // update is conditional so we don't churn subscribers when the flag is
+      // already false (the common path).
+      degradationState.update((s) =>
+        s.micPermissionDenied ? { ...s, micPermissionDenied: false } : s,
+      );
     } catch (err) {
       startError = describeStartError(err);
       if (isMicError(err)) {
