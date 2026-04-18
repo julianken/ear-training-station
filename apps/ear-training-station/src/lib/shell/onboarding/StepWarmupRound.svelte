@@ -35,7 +35,16 @@
   onMount(async () => {
     const deps = await getDeps();
     const id = crypto.randomUUID();
-    const session = await deps.sessions.start({ id, target_items: 1, started_at: Date.now() });
+    // Stamp the current zone offset at creation so the warmup session
+    // contributes to streak-day math anchored in the zone the user
+    // practiced in. See rollups#currentStreak.
+    const tzOffsetMs = -new Date().getTimezoneOffset() * 60_000;
+    const session = await deps.sessions.start({
+      id,
+      target_items: 1,
+      started_at: Date.now(),
+      tz_offset_ms: tzOffsetMs,
+    });
     controller = createSessionController({
       session,
       firstItem: warmupItem,

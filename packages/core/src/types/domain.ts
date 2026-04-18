@@ -69,6 +69,17 @@ export interface Session {
   completed_items: number;
   pitch_pass_count: number;
   label_pass_count: number;
+  /**
+   * Milliseconds to add to a UTC timestamp to get local time, captured at
+   * session creation (i.e. `new Date().getTimezoneOffset() * -60_000`).
+   * Used by `currentStreak` to anchor the session's day-index in the
+   * timezone the user was actually in when they practiced — otherwise a
+   * DST shift between record-time and render-time can cross a day
+   * boundary and break a valid streak.
+   * Optional for backward compatibility with pre-existing DB rows; the
+   * streak calc falls back to 0 (UTC) when absent.
+   */
+  tz_offset_ms?: number;
 }
 
 export interface Settings {
