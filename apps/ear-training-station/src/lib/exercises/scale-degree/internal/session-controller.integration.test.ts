@@ -64,7 +64,12 @@ describe('SessionController — persistence against real IndexedDB', () => {
     indexedDB = new IDBFactory();
     db = await openEarTrainingDB('ear-training-test');
     allItems.set([]);
-    degradationState.set({ kwsUnavailable: false, persistenceFailing: false, micLost: false });
+    degradationState.set({
+      kwsUnavailable: false,
+      persistenceFailing: false,
+      micPermissionDenied: false,
+      micLost: false,
+    });
   });
 
   // Regression: $state-backed RoundState exposes item/sungBest/etc as reactive

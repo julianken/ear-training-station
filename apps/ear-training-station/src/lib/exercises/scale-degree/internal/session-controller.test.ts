@@ -443,7 +443,12 @@ describe('SessionController — persistence failure counter consistency', () => 
   }
 
   beforeEach(() => {
-    degradationState.set({ kwsUnavailable: false, persistenceFailing: false, micLost: false });
+    degradationState.set({
+      kwsUnavailable: false,
+      persistenceFailing: false,
+      micPermissionDenied: false,
+      micLost: false,
+    });
   });
 
   it('sets degradationState.persistenceFailing when itemsRepo.put rejects', async () => {

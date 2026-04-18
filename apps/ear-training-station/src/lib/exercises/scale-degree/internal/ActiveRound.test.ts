@@ -41,6 +41,7 @@ describe('ActiveRound — startRound() error surfacing (GitHub #106 / Plan C2 Ta
     degradationState.set({
       kwsUnavailable: false,
       persistenceFailing: false,
+      micPermissionDenied: false,
       micLost: false,
     });
   });
@@ -64,8 +65,11 @@ describe('ActiveRound — startRound() error surfacing (GitHub #106 / Plan C2 Ta
     // access). If this string drifts without thought, the task's AC drifts.
     expect(screen.getByRole('alert')).toHaveTextContent(/microphone access is required/i);
     // The persistent banner mirrors the condition so the user sees context even
-    // if they navigate away and come back.
-    expect(get(degradationState).micLost).toBe(true);
+    // if they navigate away and come back. We flip `micPermissionDenied`, NOT
+    // `micLost` — "disconnected, reconnect" copy is wrong when the mic was
+    // never connected in the first place.
+    expect(get(degradationState).micPermissionDenied).toBe(true);
+    expect(get(degradationState).micLost).toBe(false);
   });
 
   it('renders a generic message when startRound() rejects with a non-mic error', async () => {
@@ -80,8 +84,9 @@ describe('ActiveRound — startRound() error surfacing (GitHub #106 / Plan C2 Ta
     await userEvent.click(screen.getByRole('button', { name: /start round/i }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(/could not start the round/i);
-    // Non-mic errors must NOT flip micLost — that would mislead the user into
-    // thinking the mic is the problem when it isn't.
+    // Non-mic errors must NOT flip either mic flag — that would mislead the
+    // user into thinking the mic is the problem when it isn't.
+    expect(get(degradationState).micPermissionDenied).toBe(false);
     expect(get(degradationState).micLost).toBe(false);
   });
 
@@ -151,6 +156,7 @@ describe('ActiveRound — startRound() error surfacing (GitHub #106 / Plan C2 Ta
     await userEvent.click(screen.getByRole('button', { name: /start round/i }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(/microphone access is required/i);
-    expect(get(degradationState).micLost).toBe(true);
+    expect(get(degradationState).micPermissionDenied).toBe(true);
+    expect(get(degradationState).micLost).toBe(false);
   });
 });

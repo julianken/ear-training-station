@@ -50,6 +50,7 @@ function resetDegradation(): void {
   degradationState.set({
     kwsUnavailable: false,
     persistenceFailing: false,
+    micPermissionDenied: false,
     micLost: false,
   });
 }
@@ -141,6 +142,7 @@ describe('layout hydration — IDB-unavailable error path', () => {
     freshDegradation.set({
       kwsUnavailable: false,
       persistenceFailing: false,
+      micPermissionDenied: false,
       micLost: false,
     });
 

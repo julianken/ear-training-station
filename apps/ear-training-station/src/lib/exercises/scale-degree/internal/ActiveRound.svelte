@@ -53,8 +53,13 @@
   /**
    * True iff the rejection came from `getUserMedia` / mic-unavailable paths.
    * Distinguishing this lets us both show the user the actionable mic message
-   * AND flip `degradationState.micLost` so the persistent DegradationBanner
-   * mirrors the condition across navigations.
+   * AND flip `degradationState.micPermissionDenied` so the persistent
+   * DegradationBanner mirrors the condition across navigations.
+   *
+   * NB: We flip `micPermissionDenied`, NOT `micLost`. The mic was never
+   * connected in the first place — "reconnect to continue" copy would be
+   * confusing. `micLost` is reserved for a future runtime-disconnect path
+   * where the mic was working and then dropped.
    *
    * DOMException names from `navigator.mediaDevices.getUserMedia`:
    * - `NotAllowedError` — user or policy denied permission
@@ -99,7 +104,7 @@
     } catch (err) {
       startError = describeStartError(err);
       if (isMicError(err)) {
-        degradationState.update((s) => ({ ...s, micLost: true }));
+        degradationState.update((s) => ({ ...s, micPermissionDenied: true }));
       }
       // Diagnostics: preserves the original error shape for debugging without
       // exposing internals to the user.
