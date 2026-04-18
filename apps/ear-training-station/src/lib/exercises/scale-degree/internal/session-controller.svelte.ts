@@ -12,6 +12,8 @@ import type { RecorderHandle } from '@ear-training/web-platform/mic/recorder';
 import { gradeListeningState } from '@ear-training/core/round/grade-listening';
 import { pickTimbre, pickRegister, type VariabilityHistory, type TimbreId } from '@ear-training/core/variability/pickers';
 import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
+import { selectNextItem } from '@ear-training/core/scheduler/selection';
+import type { RoundHistoryEntry } from '@ear-training/core/scheduler/interleaving';
 import { buildAttemptPersistence } from '@ear-training/core/round/persistence';
 import { nextBoxOnPass, nextBoxOnMiss } from '@ear-training/core/srs/leitner';
 import { SvelteMap } from 'svelte/reactivity';
@@ -56,6 +58,9 @@ export interface SessionController {
   /** @internal — test hook: read the current running pitch/label pass counters
    *  and roundIndex to verify consistency after persistence failures */
   _getRunningCounters(): { pitch: number; label: number; roundIndex: number };
+  /** @internal — test hook: seed the scheduler's round history (interleaving state)
+   *  so anti-repeat behavior can be exercised without going through full dispatch. */
+  _seedRoundHistory(entries: ReadonlyArray<RoundHistoryEntry>): void;
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
@@ -73,6 +78,10 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #captureEndTimer: number | null = null;
     #disposed = false;
     #history: VariabilityHistory = { lastTimbre: null, lastRegister: null };
+    // Round-history for the Leitner + interleaving scheduler. Populated on
+    // each successful graded transition so selectNextItem() can enforce
+    // "no same degree back-to-back" + "no same key for >3 consecutive rounds".
+    #roundHistory: RoundHistoryEntry[] = [];
     #rng: () => number = deps.rng ?? Math.random;
     // One AudioContext per session, created lazily on the first startRound()
     // and reused for every round. Chrome caps concurrent contexts at ~6; a
@@ -165,6 +174,13 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
           this.#roundIndex++;
           if (pitchOk) this.#pitchPasses++;
           if (labelOk) this.#labelPasses++;
+          // Record the completed round so the scheduler can enforce
+          // interleaving (no same-degree back-to-back, no >3 same-key streak).
+          this.#roundHistory.push({
+            itemId: item.id,
+            degree: item.degree,
+            key: item.key,
+          });
         } catch (e) {
           // Persistence failed — leave counters at pre-round values so controller
           // state stays consistent with the DB. Surface the failure to the shell banner.
@@ -310,10 +326,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         return;
       }
 
-      // More items due — advance.
-      const dueNow = await deps.itemsRepo.findDue(Date.now());
-      const justPlayed = this.currentItem?.id;
-      const next = dueNow.find((i) => i.id !== justPlayed) ?? dueNow[0] ?? null;
+      // More items due — advance. Use the Leitner + interleaving scheduler
+      // (`selectNextItem`) so weak/overdue items are prioritized AND the
+      // "no same-degree back-to-back" + "no >3 same-key streak" constraints
+      // from the spec §5.2 are honored. The scheduler handles its own due-
+      // weighting internally via the item's `due_at`; pass `listAll()` so
+      // the mastered-warmup pool is visible too.
+      const now = Date.now();
+      const allItemsForScheduler = await deps.itemsRepo.listAll();
+      const next = selectNextItem(allItemsForScheduler, this.#roundHistory, now, this.#rng);
       if (next == null) {
         // Unusual: target_items says more to go but the queue is empty. Persist completion anyway.
         await deps.sessionsRepo.complete(sessionRow.id, {
@@ -407,6 +428,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     _getRunningCounters(): { pitch: number; label: number; roundIndex: number } {
       if (import.meta.env.MODE === 'production') return { pitch: 0, label: 0, roundIndex: 0 };
       return { pitch: this.#pitchPasses, label: this.#labelPasses, roundIndex: this.#roundIndex };
+    }
+
+    _seedRoundHistory(entries: ReadonlyArray<RoundHistoryEntry>): void {
+      if (import.meta.env.MODE === 'production') return;
+      this.#roundHistory = [...entries];
     }
   }
 

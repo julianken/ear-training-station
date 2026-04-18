@@ -186,18 +186,21 @@ describe('SessionController — next()', () => {
     expect(ctrl.state.kind).toBe('idle');
   });
 
-  it('advances to idle with the next due item when more rounds remain', async () => {
+  it('advances to idle with the next item when more rounds remain', async () => {
     const nextItem: Item = { ...baseItem, id: '1-C-major', degree: 1 };
     const deps = makeDeps();
-    // Fixture order matters: baseItem (the just-played item) is first in the
-    // due queue so `dueNow[0]` would return it without the anti-repeat filter.
-    // The filter must skip baseItem and return nextItem.
-    deps.itemsRepo.findDue = vi.fn(async () => [baseItem, nextItem]);
+    // selectNextItem() takes listAll() + roundHistory. With baseItem (degree 5)
+    // in the just-played history, it is blocked by the same-degree back-to-back
+    // rule and nextItem (degree 1) must be chosen.
+    deps.itemsRepo.listAll = vi.fn(async () => [baseItem, nextItem]);
     // Session with 1/30 items completed so far
     const session: Session = { ...baseSession, completed_items: 1, target_items: 30 };
     const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
 
     ctrl._forceState(gradedState);
+    // _forceState bypasses #dispatch, so seed the scheduler history manually
+    // to simulate what the real listening→graded transition writes.
+    ctrl._seedRoundHistory([{ itemId: baseItem.id, degree: baseItem.degree, key: baseItem.key }]);
 
     await ctrl.next();
 
@@ -206,6 +209,45 @@ describe('SessionController — next()', () => {
     expect(ctrl.session?.completed_items).toBe(2);
     expect(ctrl.capturedAudio).toBeNull();
     expect(ctrl.targetAudio).toBeNull();
+  });
+
+  it('selectNextItem() uses round history, not just currentItem id — blocks repeated degree even when currentItem differs', async () => {
+    // Regression pin: the previous implementation of next() used a naive
+    // `dueNow.find(i => i.id !== justPlayed)` bypass keyed off `currentItem.id`.
+    // The scheduler path (selectNextItem + roundHistory) and the naive path must
+    // disagree here, so a silent revert to the bypass would flip the assertion.
+    //
+    // Fixture:
+    //   - currentItem = nextItem (degree 1, id '1-C-major')
+    //   - roundHistory = [baseItem entry] (degree 5)
+    //   - listAll / findDue both return [baseItem, nextItem]
+    //
+    // Old naive code:
+    //   justPlayed = nextItem.id → find() skips nextItem → returns baseItem (degree 5)
+    //
+    // New scheduler:
+    //   roundHistory last entry degree=5 → isBlockedSameDegree(baseItem) → true →
+    //   only nextItem is eligible → returns nextItem (degree 1)
+    const nextItem: Item = { ...baseItem, id: '1-C-major', degree: 1 };
+    const deps = makeDeps();
+    // Stub both paths so whichever runs has a well-defined fixture. Order is
+    // chosen so the naive path would return baseItem (the wrong answer).
+    deps.itemsRepo.listAll = vi.fn(async () => [baseItem, nextItem]);
+    deps.itemsRepo.findDue = vi.fn(async () => [baseItem, nextItem]);
+    const session: Session = { ...baseSession, completed_items: 1, target_items: 30 };
+    // firstItem = nextItem so controller.currentItem starts as nextItem;
+    // this primes `justPlayed = nextItem.id` for the naive-path comparison.
+    const ctrl = createSessionController({ ...deps, session, firstItem: nextItem });
+
+    ctrl._forceState(gradedState);
+    ctrl._seedRoundHistory([{ itemId: baseItem.id, degree: baseItem.degree, key: baseItem.key }]);
+
+    await ctrl.next();
+
+    // Scheduler blocks degree 5 (in history) so the chosen item must have
+    // degree 1. The naive bypass would have returned baseItem (degree 5).
+    expect(ctrl.currentItem?.degree).toBe(1);
+    expect(ctrl.currentItem?.id).toBe(nextItem.id);
   });
 
   it('completes the session when target_items is reached', async () => {
@@ -242,9 +284,9 @@ describe('SessionController — next()', () => {
     );
   });
 
-  it('completes the session when no due items remain despite target not reached', async () => {
+  it('completes the session when selectNextItem returns null despite target not reached', async () => {
     const deps = makeDeps();
-    deps.itemsRepo.findDue = vi.fn(async () => []); // empty queue
+    deps.itemsRepo.listAll = vi.fn(async () => []); // empty queue → selector returns null
     const session: Session = { ...baseSession, completed_items: 5, target_items: 30 };
     const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
 
@@ -395,7 +437,9 @@ describe('SessionController — attempt persistence on graded transition', () =>
 
   it('running #pitchPasses / #labelPasses are reflected in session completion', async () => {
     const deps = makeDeps();
-    deps.itemsRepo.findDue = vi.fn(async () => []);
+    // Empty queue path: selectNextItem returns null and next() falls through
+    // to session completion so we can observe the running counters.
+    deps.itemsRepo.listAll = vi.fn(async () => []);
     const session: Session = {
       ...baseSession,
       completed_items: 5,
