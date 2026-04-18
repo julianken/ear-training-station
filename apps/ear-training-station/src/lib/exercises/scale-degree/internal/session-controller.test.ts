@@ -186,18 +186,21 @@ describe('SessionController — next()', () => {
     expect(ctrl.state.kind).toBe('idle');
   });
 
-  it('advances to idle with the next due item when more rounds remain', async () => {
+  it('advances to idle with the next item when more rounds remain', async () => {
     const nextItem: Item = { ...baseItem, id: '1-C-major', degree: 1 };
     const deps = makeDeps();
-    // Fixture order matters: baseItem (the just-played item) is first in the
-    // due queue so `dueNow[0]` would return it without the anti-repeat filter.
-    // The filter must skip baseItem and return nextItem.
-    deps.itemsRepo.findDue = vi.fn(async () => [baseItem, nextItem]);
+    // selectNextItem() takes listAll() + roundHistory. With baseItem (degree 5)
+    // in the just-played history, it is blocked by the same-degree back-to-back
+    // rule and nextItem (degree 1) must be chosen.
+    deps.itemsRepo.listAll = vi.fn(async () => [baseItem, nextItem]);
     // Session with 1/30 items completed so far
     const session: Session = { ...baseSession, completed_items: 1, target_items: 30 };
     const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
 
     ctrl._forceState(gradedState);
+    // _forceState bypasses #dispatch, so seed the scheduler history manually
+    // to simulate what the real listening→graded transition writes.
+    ctrl._seedRoundHistory([{ itemId: baseItem.id, degree: baseItem.degree, key: baseItem.key }]);
 
     await ctrl.next();
 
@@ -242,9 +245,9 @@ describe('SessionController — next()', () => {
     );
   });
 
-  it('completes the session when no due items remain despite target not reached', async () => {
+  it('completes the session when selectNextItem returns null despite target not reached', async () => {
     const deps = makeDeps();
-    deps.itemsRepo.findDue = vi.fn(async () => []); // empty queue
+    deps.itemsRepo.listAll = vi.fn(async () => []); // empty queue → selector returns null
     const session: Session = { ...baseSession, completed_items: 5, target_items: 30 };
     const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
 
@@ -395,7 +398,9 @@ describe('SessionController — attempt persistence on graded transition', () =>
 
   it('running #pitchPasses / #labelPasses are reflected in session completion', async () => {
     const deps = makeDeps();
-    deps.itemsRepo.findDue = vi.fn(async () => []);
+    // Empty queue path: selectNextItem returns null and next() falls through
+    // to session completion so we can observe the running counters.
+    deps.itemsRepo.listAll = vi.fn(async () => []);
     const session: Session = {
       ...baseSession,
       completed_items: 5,
