@@ -81,6 +81,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #recorderHandle: RecorderHandle | null = null;
     #captureEndTimer: number | null = null;
     #disposed = false;
+    #renderToken: number = 0;
     #history: VariabilityHistory = { lastTimbre: null, lastRegister: null };
     // Round-history for the Leitner + interleaving scheduler. Populated on
     // each successful graded transition so selectNextItem() can enforce
@@ -235,6 +236,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       if (this.state.kind !== 'idle') return; // guard against double-start
       if (this.currentItem == null) return;
 
+      // Increment the render token so any in-flight renderTargetBuffer()
+      // from a prior canceled round will be discarded when it resolves.
+      this.#renderToken++;
+      this.targetAudio = null;
+
       // Load user settings lazily on the first round, then reuse for the life
       // of the session. settingsRepo.getOrDefault() falls back to
       // DEFAULT_SETTINGS if IDB read fails or the row is absent, so we never
@@ -311,16 +317,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       // replay is a non-essential affordance; a render failure must not
       // block the round.
       //
-      // Race guard: capture the item at render-start. If `next()` has
-      // advanced to a new round by the time the render resolves, the
-      // currentItem reference will differ and the buffer is discarded —
-      // otherwise a stale render would clobber the null reset in next()
-      // (and possibly a fresh render from the new round).
-      const renderedForItem = this.currentItem;
+      // Race guard: capture the render token at render-start. If the round
+      // is canceled (and optionally restarted) by the time the render
+      // resolves, the token will have been incremented and the stale buffer
+      // is discarded — preventing a timbre-A render from clobbering the
+      // null reset or a fresh timbre-B render from a new round on the same item.
+      const renderToken = this.#renderToken;
       renderTargetBuffer({ timbreId: timbre, target })
         .then((buf) => {
-          if (this.#disposed) return;
-          if (this.currentItem !== renderedForItem) return;
+          if (this.#disposed || renderToken !== this.#renderToken) return;
           this.targetAudio = buf;
         })
         .catch((e) => {
@@ -357,6 +362,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     cancelRound(): void {
       if (this.#disposed) return;
       consecutiveNullCount.set(0);
+      // Invalidate any in-flight renderTargetBuffer() so a stale render from
+      // this round cannot clobber the buffer when the next round (possibly
+      // on the same item with a different timbre) kicks off.
+      this.#renderToken++;
+      this.targetAudio = null;
       // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. cancelRound() is synchronous (called from UI click handlers) — awaiting would force the method async and is architecturally incorrect.
       this.#dispatch({ type: 'USER_CANCELED', at_ms: Date.now() });
       this.#stopAudioHandles();
