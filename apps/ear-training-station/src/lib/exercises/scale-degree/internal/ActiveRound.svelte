@@ -25,9 +25,35 @@
   const cadenceStartAcTime = 0;
   const getCurrentTime = () => 0;
 
-  // windowStartMs and getNowMs are stubs — Task 6 wires real wall-clock offsets.
-  const windowStartMs = 0;
-  const getNowMs = () => 0;
+  // windowStartMs is the wall-clock timestamp (Date.now()-domain) of when the
+  // capture window started — i.e. when the controller dispatched PLAYBACK_DONE
+  // and transitioned into `listening`. We capture this on the reactive state
+  // transition rather than passing a stub (0 = Unix epoch) because pitch frames
+  // carry `at_ms = Date.now()`, so windowStartMs MUST be in the same domain or
+  // PitchTrace's (at_ms - windowStartMs) math produces billions and every frame
+  // clamps to the right edge (1.75T / 5000 * 480 ≈ billions). See GitHub #120 /
+  // Plan C2 Task 7.
+  //
+  // We keep the captured value stable across the listening → graded transition
+  // so the trace keeps showing the just-captured frames against the same time
+  // origin during the feedback panel. A new `listening` window recaptures.
+  let windowStartMs = $state(0);
+  const getNowMs = () => Date.now();
+
+  // Non-reactive transition tracker. Reading `controller.state.kind` inside
+  // $effect registers the dependency; `prevKind` is a plain module-local so
+  // writing it doesn't re-trigger the effect. We want to capture the anchor
+  // ONLY on the transition INTO `listening` — not on every PITCH_FRAME that
+  // arrives while already listening, which would continually reset the x-axis
+  // origin to "now" and leave the trace perpetually empty.
+  let prevKind: string | null = null;
+  $effect(() => {
+    const kind = controller.state.kind;
+    if (kind === 'listening' && prevKind !== 'listening') {
+      windowStartMs = Date.now();
+    }
+    prevKind = kind;
+  });
 
   const targetVisible = $derived(
     controller.state.kind === 'playing_target' || controller.state.kind === 'listening',
