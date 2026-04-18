@@ -25,7 +25,7 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   timeout: 60_000,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5273',
     launchOptions: {
       args: [
         '--use-fake-ui-for-media-stream',
@@ -38,8 +38,11 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: 'pnpm run dev',
-    url: 'http://localhost:5173/',
+    // Isolated port (not 5173) so playwright tests don't collide with an engineer's local dev server.
+    // pnpm run dev would inject a literal `--` that vite treats as end-of-flags (dropping the port
+    // override silently); pnpm exec vite bypasses that. See CLAUDE.md for the same pnpm-arg gotcha.
+    command: 'pnpm exec vite dev --port 5273 --strictPort',
+    url: 'http://localhost:5273/',
     reuseExistingServer: true,
     timeout: 30_000,
   },
