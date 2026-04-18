@@ -18,8 +18,8 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
 
   // Type-aware rules (requires projectService for TS program lookup).
-  // Scoped to .ts files only; Svelte files need parser-level project wiring we
-  // do not yet configure, so we leave them on the non-type-aware rules set.
+  // Svelte files get the same rule via their own parser-options block below
+  // (see the *.svelte and *.svelte.ts blocks — Plan C2 Task 9, issue #115).
   {
     files: ['**/*.ts'],
     languageOptions: {
@@ -40,13 +40,22 @@ export default tseslint.config(
   // Svelte support (activates only on .svelte files)
   ...svelte.configs['flat/recommended'],
 
-  // Svelte + TypeScript integration (*.svelte files)
+  // Svelte + TypeScript integration (*.svelte files). Enabling projectService
+  // so type-aware rules (no-floating-promises) work inside <script lang="ts">.
   {
     files: ['**/*.svelte'],
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
+        projectService: true,
+        extraFileExtensions: ['.svelte'],
+        tsconfigRootDir: import.meta.dirname,
       },
+    },
+    rules: {
+      // Extend the no-floating-promises guardrail to .svelte script blocks.
+      // Same policy as the .ts config (see comment above).
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
     },
   },
 
@@ -58,7 +67,13 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
+        projectService: true,
+        extraFileExtensions: ['.svelte'],
+        tsconfigRootDir: import.meta.dirname,
       },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
     },
   },
 

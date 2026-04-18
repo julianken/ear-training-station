@@ -67,7 +67,9 @@
 
   onDestroy(() => {
     stop();
-    void ctx?.close();
+    // AudioContext close is cleanup during component destroy; swallow errors
+    // because there's no live UI to surface a close failure to.
+    ctx?.close().catch(() => { /* swallow cleanup error */ });
   });
 </script>
 
