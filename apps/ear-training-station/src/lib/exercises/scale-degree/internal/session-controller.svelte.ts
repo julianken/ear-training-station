@@ -74,6 +74,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #disposed = false;
     #history: VariabilityHistory = { lastTimbre: null, lastRegister: null };
     #rng: () => number = deps.rng ?? Math.random;
+    // One AudioContext per session, created lazily on the first startRound()
+    // and reused for every round. Chrome caps concurrent contexts at ~6; a
+    // fresh context per round silently exhausts the budget and breaks the
+    // pitch worklet (every round grades as pitch-fail, corrupting SRS).
+    #audioContext: AudioContext | null = null;
 
     // Persistence state — maintained across rounds
     #reviewsInBox: SvelteMap<string, number> = new SvelteMap();
@@ -196,7 +201,12 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       if (this.state.kind !== 'idle') return; // guard against double-start
       if (this.currentItem == null) return;
 
-      const ctx = deps.getAudioContext();
+      // Create the session AudioContext lazily on the first round, then reuse
+      // it for every subsequent round. Closed in dispose().
+      if (this.#audioContext == null) {
+        this.#audioContext = deps.getAudioContext();
+      }
+      const ctx = this.#audioContext;
       const stream = await deps.getMicStream();
 
       // Pick timbre and register via variability pickers (no monoculture)
@@ -334,6 +344,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       consecutiveNullCount.set(0);
       degradationState.update((s) => ({ ...s, kwsUnavailable: false }));
       this.#stopAudioHandles();
+      // Release the session's AudioContext so Chrome's ~6-context budget isn't
+      // consumed by stale contexts from prior sessions. close() is async but we
+      // fire-and-forget: the caller doesn't need to await disposal, and close()
+      // can reject if the context is already closed — which we don't care about.
+      if (this.#audioContext != null) {
+        const ctx = this.#audioContext;
+        this.#audioContext = null;
+        ctx.close().catch(() => { /* already closed or unsupported */ });
+      }
     }
 
     #stopAudioHandles(): void {
