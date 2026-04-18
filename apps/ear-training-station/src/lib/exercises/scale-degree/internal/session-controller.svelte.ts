@@ -1,7 +1,7 @@
 import { roundReducer } from '@ear-training/core/round/state';
 import type { RoundState } from '@ear-training/core/round/state';
 import type { RoundEvent } from '@ear-training/core/round/events';
-import type { Item, Session, Register } from '@ear-training/core/types/domain';
+import type { Item, Session, Settings, Register } from '@ear-training/core/types/domain';
 import type {
   ItemsRepo, AttemptsRepo, SessionsRepo, SettingsRepo,
 } from '@ear-training/core/repos/interfaces';
@@ -61,6 +61,10 @@ export interface SessionController {
   /** @internal — test hook: seed the scheduler's round history (interleaving state)
    *  so anti-repeat behavior can be exercised without going through full dispatch. */
   _seedRoundHistory(entries: ReadonlyArray<RoundHistoryEntry>): void;
+  /** @internal — test hook: inject a settings snapshot without running
+   *  startRound(). Lets tests exercise settings-gated code paths
+   *  (auto_advance_on_hit=false) while still using _forceState() fixtures. */
+  _forceSettings(settings: Settings): void;
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
@@ -96,6 +100,12 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #labelPasses: number = deps.session.label_pass_count;
     // Target hz stored at startRound time for use in attempt persistence
     #currentTargetHz: number = 0;
+    // User settings — loaded lazily on first startRound() from settingsRepo.
+    // Null until the first round starts. Once loaded, reused for the life of
+    // the session (changes during a session don't take effect until the next
+    // session; the Settings screen writes back to IDB so the next session
+    // picks up the new value on its own first-round load).
+    #settings: Settings | null = null;
 
     async #dispatch(event: RoundEvent): Promise<void> {
       const prev = this.state.kind;
@@ -202,9 +212,16 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       if (this.state.kind !== 'listening') return;
       const thresholds = { minPitchConfidence: 0.5, minDigitConfidence: 0.5 };
       const grade = gradeListeningState(this.state, this.currentItem!, thresholds);
-      // Auto-advance on hit, if setting is on
-      // (settings will be threaded through via settingsSnapshot — simple default for now)
-      if (grade.outcome.pass) {
+      // Auto-advance on hit — early transition from listening→graded without
+      // waiting for the 5s capture window to close. Gated on the user's
+      // `auto_advance_on_hit` setting. When OFF, the listening window runs
+      // the full 5s and the timeout in startRound() fires CAPTURE_COMPLETE.
+      // When #settings is null (setting not yet loaded, or controller in a
+      // harness/test path that skipped startRound), default to true — matches
+      // DEFAULT_SETTINGS.auto_advance_on_hit and preserves existing behavior
+      // for the unit tests that force a listening state directly.
+      const autoAdvance = this.#settings?.auto_advance_on_hit ?? true;
+      if (autoAdvance && grade.outcome.pass) {
         void this.#dispatch({ type: 'CAPTURE_COMPLETE', at_ms: Date.now(), grade });
       }
       // Capture timeout is handled in startRound() via a setTimeout to ~5s
@@ -216,6 +233,15 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       if (this.#disposed) return;
       if (this.state.kind !== 'idle') return; // guard against double-start
       if (this.currentItem == null) return;
+
+      // Load user settings lazily on the first round, then reuse for the life
+      // of the session. settingsRepo.getOrDefault() falls back to
+      // DEFAULT_SETTINGS if IDB read fails or the row is absent, so we never
+      // block the round on a settings read — any failure inside the repo
+      // surfaces as defaults rather than an exception here.
+      if (this.#settings == null) {
+        this.#settings = await deps.settingsRepo.getOrDefault();
+      }
 
       // Create the session AudioContext lazily on the first round, then reuse
       // it for every subsequent round. Closed in dispose().
@@ -433,6 +459,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     _seedRoundHistory(entries: ReadonlyArray<RoundHistoryEntry>): void {
       if (import.meta.env.MODE === 'production') return;
       this.#roundHistory = [...entries];
+    }
+
+    _forceSettings(settings: Settings): void {
+      if (import.meta.env.MODE === 'production') return;
+      this.#settings = settings;
     }
   }
 
