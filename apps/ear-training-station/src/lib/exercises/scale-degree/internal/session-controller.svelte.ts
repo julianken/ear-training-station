@@ -310,12 +310,17 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       // target 1.5s + 5s capture). Handled `.then(...).catch(...)` chain —
       // replay is a non-essential affordance; a render failure must not
       // block the round.
+      //
+      // Race guard: capture the item at render-start. If `next()` has
+      // advanced to a new round by the time the render resolves, the
+      // currentItem reference will differ and the buffer is discarded —
+      // otherwise a stale render would clobber the null reset in next()
+      // (and possibly a fresh render from the new round).
+      const renderedForItem = this.currentItem;
       renderTargetBuffer({ timbreId: timbre, target })
         .then((buf) => {
-          // Guard against a late-arriving render after the user advanced to
-          // the next round (which resets targetAudio to null in next()) or
-          // disposed the controller.
           if (this.#disposed) return;
+          if (this.currentItem !== renderedForItem) return;
           this.targetAudio = buf;
         })
         .catch((e) => {
