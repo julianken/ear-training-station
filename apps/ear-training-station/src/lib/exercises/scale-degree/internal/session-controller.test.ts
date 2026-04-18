@@ -211,6 +211,45 @@ describe('SessionController — next()', () => {
     expect(ctrl.targetAudio).toBeNull();
   });
 
+  it('selectNextItem() uses round history, not just currentItem id — blocks repeated degree even when currentItem differs', async () => {
+    // Regression pin: the previous implementation of next() used a naive
+    // `dueNow.find(i => i.id !== justPlayed)` bypass keyed off `currentItem.id`.
+    // The scheduler path (selectNextItem + roundHistory) and the naive path must
+    // disagree here, so a silent revert to the bypass would flip the assertion.
+    //
+    // Fixture:
+    //   - currentItem = nextItem (degree 1, id '1-C-major')
+    //   - roundHistory = [baseItem entry] (degree 5)
+    //   - listAll / findDue both return [baseItem, nextItem]
+    //
+    // Old naive code:
+    //   justPlayed = nextItem.id → find() skips nextItem → returns baseItem (degree 5)
+    //
+    // New scheduler:
+    //   roundHistory last entry degree=5 → isBlockedSameDegree(baseItem) → true →
+    //   only nextItem is eligible → returns nextItem (degree 1)
+    const nextItem: Item = { ...baseItem, id: '1-C-major', degree: 1 };
+    const deps = makeDeps();
+    // Stub both paths so whichever runs has a well-defined fixture. Order is
+    // chosen so the naive path would return baseItem (the wrong answer).
+    deps.itemsRepo.listAll = vi.fn(async () => [baseItem, nextItem]);
+    deps.itemsRepo.findDue = vi.fn(async () => [baseItem, nextItem]);
+    const session: Session = { ...baseSession, completed_items: 1, target_items: 30 };
+    // firstItem = nextItem so controller.currentItem starts as nextItem;
+    // this primes `justPlayed = nextItem.id` for the naive-path comparison.
+    const ctrl = createSessionController({ ...deps, session, firstItem: nextItem });
+
+    ctrl._forceState(gradedState);
+    ctrl._seedRoundHistory([{ itemId: baseItem.id, degree: baseItem.degree, key: baseItem.key }]);
+
+    await ctrl.next();
+
+    // Scheduler blocks degree 5 (in history) so the chosen item must have
+    // degree 1. The naive bypass would have returned baseItem (degree 5).
+    expect(ctrl.currentItem?.degree).toBe(1);
+    expect(ctrl.currentItem?.id).toBe(nextItem.id);
+  });
+
   it('completes the session when target_items is reached', async () => {
     const deps = makeDeps();
     // completed_items = 29, target_items = 30 → next() should complete
