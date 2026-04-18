@@ -3,10 +3,14 @@
   import { allSessions } from './stores';
   import { currentStreak } from '@ear-training/core/analytics/rollups';
 
-  const streak = derived(allSessions, ($sessions) => {
-    const tzOffsetMs = -new Date().getTimezoneOffset() * 60_000;
-    return currentStreak($sessions, Date.now(), tzOffsetMs);
-  });
+  // Pass the viewer's current offset as the "today" anchor so the streak
+  // window is computed in local wall-clock time. Per-session tz_offset_ms
+  // (stamped at creation) is used by currentStreak() for placing each
+  // session on the correct calendar day — the two are independent.
+  const tzOffsetMs = -new Date().getTimezoneOffset() * 60_000;
+  const streak = derived(allSessions, ($sessions) =>
+    currentStreak($sessions, Date.now(), tzOffsetMs),
+  );
 </script>
 
 <span class="streak-chip" aria-label="Current streak">

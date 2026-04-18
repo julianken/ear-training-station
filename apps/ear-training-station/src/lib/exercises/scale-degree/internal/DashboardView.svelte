@@ -31,7 +31,16 @@
       // Fallback to the default (30) if the store hasn't hydrated yet, which
       // only happens in degenerate cases (e.g., persistence failure).
       const targetItems = get(settings).session_length;
-      const session = await deps.sessions.start({ id, target_items: targetItems, started_at: Date.now() });
+      // Stamp the current zone offset at creation so streak-day math is
+      // anchored to the zone the user practiced in, not the viewer's
+      // zone when the streak chip later renders. See rollups#currentStreak.
+      const tzOffsetMs = -new Date().getTimezoneOffset() * 60_000;
+      const session = await deps.sessions.start({
+        id,
+        target_items: targetItems,
+        started_at: Date.now(),
+        tz_offset_ms: tzOffsetMs,
+      });
       await goto(resolve(`/scale-degree/sessions/${session.id}`));
     } finally {
       starting = false;
