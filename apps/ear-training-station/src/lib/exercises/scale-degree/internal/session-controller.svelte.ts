@@ -222,7 +222,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       // for the unit tests that force a listening state directly.
       const autoAdvance = this.#settings?.auto_advance_on_hit ?? true;
       if (autoAdvance && grade.outcome.pass) {
-        void this.#dispatch({ type: 'CAPTURE_COMPLETE', at_ms: Date.now(), grade });
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting from this sync subscription/grader callback would require async event handlers and is architecturally incorrect.
+        this.#dispatch({ type: 'CAPTURE_COMPLETE', at_ms: Date.now(), grade });
       }
       // Capture timeout is handled in startRound() via a setTimeout to ~5s
       // past PLAYBACK_DONE. If fired without a pass, dispatch CAPTURE_COMPLETE
@@ -256,7 +257,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       const { timbre, register } = this._pickVariability(allItems);
 
       // Dispatch ROUND_STARTED synthetically
-      void this.#dispatch({
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting here would serialize reducer work with audio setup below; fire-and-forget is the intended shape.
+      this.#dispatch({
         type: 'ROUND_STARTED',
         at_ms: Date.now(),
         item: this.currentItem,
@@ -282,7 +284,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         this.#kwsHandle = await startKeywordSpotter({});
         this.#kwsHandle.subscribe((frame) => {
           if (frame.digit == null) return;
-          void this.#dispatch({
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting from this synchronous KWS subscription callback would require an async event handler and is architecturally incorrect.
+          this.#dispatch({
             type: 'DIGIT_HEARD', at_ms: Date.now(),
             digit: digitLabelToNumber(frame.digit),
             confidence: frame.confidence,
@@ -299,22 +302,28 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       this.#currentTargetHz = target.hz;
       this.#playHandle = playRound({ timbreId: timbre, cadence, target, gapSec: 0.2 });
 
-      void this.#dispatch({ type: 'CADENCE_STARTED', at_ms: Date.now() });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting here would serialize reducer work with the play-handle wiring below; fire-and-forget is the intended shape.
+      this.#dispatch({ type: 'CADENCE_STARTED', at_ms: Date.now() });
 
       // When target is about to start (Tone.js resolves targetStartAtAcTime)
-      void this.#playHandle.targetStartAtAcTime.then(() => {
-        void this.#dispatch({ type: 'TARGET_STARTED', at_ms: Date.now() });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises -- This is a play-handle Promise chain used as a completion hook. startRound() must return once setup is complete — awaiting here would block until target playback starts, defeating the async orchestration model. Errors are owned by playRound().
+      this.#playHandle.targetStartAtAcTime.then(() => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting from this synchronous .then() callback would require an async handler and is architecturally incorrect.
+        this.#dispatch({ type: 'TARGET_STARTED', at_ms: Date.now() });
       });
 
       // When playback completes, begin listening window
-      void this.#playHandle.done.then(() => {
-        void this.#dispatch({ type: 'PLAYBACK_DONE', at_ms: Date.now() });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises -- This is a play-handle Promise chain used as a completion hook. startRound() must return once setup is complete — awaiting here would block until playback ends, defeating the async orchestration model. Errors are owned by playRound().
+      this.#playHandle.done.then(() => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting from this synchronous .then() callback would require an async handler and is architecturally incorrect.
+        this.#dispatch({ type: 'PLAYBACK_DONE', at_ms: Date.now() });
         this.#recorderHandle?.start();
         this.#captureEndTimer = setTimeout(() => {
           if (this.state.kind === 'listening') {
             const thresholds = { minPitchConfidence: 0.5, minDigitConfidence: 0.5 };
             const grade = gradeListeningState(this.state, this.currentItem!, thresholds);
-            void this.#dispatch({ type: 'CAPTURE_COMPLETE', at_ms: Date.now(), grade });
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting from this synchronous setTimeout callback would require an async handler and is architecturally incorrect.
+            this.#dispatch({ type: 'CAPTURE_COMPLETE', at_ms: Date.now(), grade });
           }
         }, 5000) as unknown as number;
       });
@@ -323,7 +332,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     cancelRound(): void {
       if (this.#disposed) return;
       consecutiveNullCount.set(0);
-      void this.#dispatch({ type: 'USER_CANCELED', at_ms: Date.now() });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. cancelRound() is synchronous (called from UI click handlers) — awaiting would force the method async and is architecturally incorrect.
+      this.#dispatch({ type: 'USER_CANCELED', at_ms: Date.now() });
       this.#stopAudioHandles();
     }
 
@@ -432,7 +442,8 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       } else {
         consecutiveNullCount.set(0);
       }
-      void this.#dispatch({ type: 'PITCH_FRAME', at_ms: Date.now(), hz: frame.hz, confidence: frame.confidence });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting from this synchronous pitch-detector subscription callback would require an async handler and is architecturally incorrect.
+      this.#dispatch({ type: 'PITCH_FRAME', at_ms: Date.now(), hz: frame.hz, confidence: frame.confidence });
     }
 
     _forceState(state: RoundState): void {
