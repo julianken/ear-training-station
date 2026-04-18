@@ -5,8 +5,16 @@
   import PitchTrace from './PitchTrace.svelte';
   import { buildCadence } from '@ear-training/core/audio/cadence-structure';
   import type { ChordEvent } from '@ear-training/core/audio/cadence-structure';
+  import { degradationState } from '$lib/shell/stores';
 
   let { controller }: { controller: SessionController } = $props();
+
+  // Local error state for startRound() failures. Cleared on the next attempt so
+  // the user can retry by clicking the button again without a separate reset UI.
+  // See GitHub #106 / Plan C2 Task 3 — previously startRound() rejections were
+  // silently swallowed by the Svelte event handler, stranding the user on an
+  // idle-looking UI with no feedback.
+  let startError = $state<string | null>(null);
 
   const cadence = $derived<ChordEvent[]>(
     controller.currentItem ? buildCadence(controller.currentItem.key) : [],
@@ -42,8 +50,61 @@
 
   const traceDegree = $derived(controller.currentItem?.degree ?? 1);
 
+  /**
+   * True iff the rejection came from `getUserMedia` / mic-unavailable paths.
+   * Distinguishing this lets us both show the user the actionable mic message
+   * AND flip `degradationState.micLost` so the persistent DegradationBanner
+   * mirrors the condition across navigations.
+   *
+   * DOMException names from `navigator.mediaDevices.getUserMedia`:
+   * - `NotAllowedError` — user or policy denied permission
+   * - `PermissionDeniedError` — legacy alias seen in older Chromium
+   * - `NotFoundError` — no input device detected
+   * - `NotReadableError` — hardware in use by another app / locked
+   *
+   * `code: 'unavailable'` is the marker attached by
+   * `requestMicStream()` when the Microphone API is absent entirely
+   * (older Safari, insecure context, etc.).
+   */
+  function isMicError(err: unknown): boolean {
+    const name = err instanceof Error ? err.name : '';
+    const code = (err as { code?: string } | null)?.code;
+    return (
+      name === 'NotAllowedError' ||
+      name === 'PermissionDeniedError' ||
+      name === 'NotFoundError' ||
+      name === 'NotReadableError' ||
+      code === 'unavailable'
+    );
+  }
+
+  /**
+   * Classify a `startRound()` rejection into user-visible copy. Mic failures
+   * get a specific, actionable message; other failures (AudioContext creation,
+   * worklet load, IDB read) fall through to a generic message — we don't want
+   * to invent specific guidance the user can't act on.
+   */
+  function describeStartError(err: unknown): string {
+    if (isMicError(err)) {
+      return 'Microphone access is required to practice. Enable mic access in your browser settings and try again.';
+    }
+    return 'Could not start the round. Please try again.';
+  }
+
   async function start() {
-    await controller.startRound();
+    // Clear any prior error so a retry shows a fresh attempt.
+    startError = null;
+    try {
+      await controller.startRound();
+    } catch (err) {
+      startError = describeStartError(err);
+      if (isMicError(err)) {
+        degradationState.update((s) => ({ ...s, micLost: true }));
+      }
+      // Diagnostics: preserves the original error shape for debugging without
+      // exposing internals to the user.
+      console.error('ActiveRound: startRound() failed', err);
+    }
   }
 </script>
 
@@ -77,6 +138,9 @@
       <button type="button" class="start" onclick={start}>Start round</button>
     </div>
   {/if}
+  {#if startError}
+    <p class="start-error" role="alert" aria-live="polite">{startError}</p>
+  {/if}
 </section>
 
 <style>
@@ -95,5 +159,12 @@
     border: 1px solid var(--cyan); background: transparent;
     color: var(--cyan); font-size: 12px;
     cursor: pointer;
+  }
+  .start-error {
+    text-align: center;
+    font-size: 11px;
+    color: var(--red);
+    margin: 12px auto 0;
+    max-width: 400px;
   }
 </style>

@@ -623,3 +623,60 @@ describe('SessionController — AudioContext lifecycle (GitHub #104 / Plan C2 Ta
     expect(close).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('SessionController — startRound() rejection propagation (GitHub #106 / Plan C2 Task 3)', () => {
+  // The controller does not wrap its own async failures — it propagates them so
+  // the caller (ActiveRound.svelte) can surface a user-visible error. These
+  // tests pin that contract: without propagation, the UI can't show an error,
+  // and the failure is silent (which is exactly what #106 fixed at the UI seam).
+
+  it('startRound() rejects when getMicStream() rejects with a permission error', async () => {
+    const deps = makeDeps();
+    const micError = Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' });
+    deps.getMicStream = vi.fn(async () => { throw micError; });
+    const ctrl = createSessionController(deps);
+
+    await expect(ctrl.startRound()).rejects.toBe(micError);
+  });
+
+  it('startRound() rejects when getAudioContext() throws synchronously', async () => {
+    const deps = makeDeps();
+    const audioError = new Error('AudioContext creation failed');
+    deps.getAudioContext = vi.fn(() => { throw audioError; });
+    const ctrl = createSessionController(deps);
+
+    await expect(ctrl.startRound()).rejects.toBe(audioError);
+  });
+
+  it('getMicStream() is invoked as part of startRound(), wiring up the mic-error path', async () => {
+    const deps = makeDeps();
+    const getMicStream = vi.fn(async () => ({} as MediaStream));
+    deps.getMicStream = getMicStream;
+    const ctrl = createSessionController(deps);
+
+    // startRound() pulls in web-platform modules that require real browser APIs
+    // (AudioWorklet, etc.) which jsdom doesn't provide, so the promise rejects
+    // partway through. We only care that getMicStream was consulted — that
+    // proves mic-permission errors would propagate, since that's where the
+    // NotAllowedError surfaces in production.
+    await ctrl.startRound().catch(() => {});
+
+    expect(getMicStream).toHaveBeenCalled();
+  });
+
+  it('state remains idle when startRound() rejects on getMicStream()', async () => {
+    // Regression pin: before #106 the UI silently stayed in idle with no
+    // feedback. The fix is at the call site (ActiveRound.svelte), so the
+    // controller-level contract we rely on is that the state does NOT
+    // advance past idle when the mic acquisition step fails.
+    const deps = makeDeps();
+    deps.getMicStream = vi.fn(async () => {
+      throw Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' });
+    });
+    const ctrl = createSessionController(deps);
+
+    await ctrl.startRound().catch(() => {});
+
+    expect(ctrl.state.kind).toBe('idle');
+  });
+});
