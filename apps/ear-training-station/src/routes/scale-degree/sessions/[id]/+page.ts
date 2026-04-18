@@ -40,6 +40,5 @@ function rollUpAbandonedSession(attempts: Attempt[]): CompleteSessionInput {
     completed_items: attempts.length,
     pitch_pass_count: attempts.filter((a) => a.graded.pitch).length,
     label_pass_count: attempts.filter((a) => a.graded.label).length,
-    focus_item_id: null,
   };
 }

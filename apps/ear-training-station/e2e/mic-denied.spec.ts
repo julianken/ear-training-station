@@ -14,7 +14,7 @@ test('denied mic renders the MicDeniedGate', async ({ page }) => {
         tx.objectStore('sessions').put({
           id: 'sess-mic-denied', started_at: Date.now(), ended_at: null,
           target_items: 30, completed_items: 0,
-          pitch_pass_count: 0, label_pass_count: 0, focus_item_id: null,
+          pitch_pass_count: 0, label_pass_count: 0,
         });
       };
     });

@@ -17,13 +17,12 @@ describe('sessions-repo', () => {
       completed_items: 30,
       pitch_pass_count: 24,
       label_pass_count: 28,
-      focus_item_id: '6-C-major',
     });
 
     const after = await repo.get('s1');
     expect(after?.ended_at).toBe(200);
     expect(after?.completed_items).toBe(30);
-    expect(after?.focus_item_id).toBe('6-C-major');
+    expect(after?.pitch_pass_count).toBe(24);
   });
 
   it('findRecent returns sessions sorted newest first', async () => {

@@ -21,7 +21,6 @@ test('reloading an ongoing session abandons it and shows summary', async ({ page
           completed_items: 0,
           pitch_pass_count: 0,
           label_pass_count: 0,
-          focus_item_id: null,
         });
       };
     });
@@ -55,7 +54,6 @@ test('completed session shows summary placeholder', async ({ page }) => {
           completed_items: 5,
           pitch_pass_count: 3,
           label_pass_count: 4,
-          focus_item_id: null,
         });
       };
     });

@@ -16,7 +16,6 @@ vi.mock('$lib/shell/deps', () => ({
         completed_items: 0,
         pitch_pass_count: 0,
         label_pass_count: 0,
-        focus_item_id: null,
       }),
       complete: vi.fn().mockResolvedValue(undefined),
     },

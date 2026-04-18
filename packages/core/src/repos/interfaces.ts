@@ -26,7 +26,6 @@ export interface CompleteSessionInput {
   completed_items: number;
   pitch_pass_count: number;
   label_pass_count: number;
-  focus_item_id: string | null;
 }
 
 export interface SessionsRepo {

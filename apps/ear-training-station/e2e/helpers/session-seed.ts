@@ -6,7 +6,6 @@ import type { Degree, Key } from '@ear-training/core/types/music';
 export interface ActiveSessionSeed {
   id?: string;
   target_items?: number;
-  focus_item_id?: string | null;
   started_at?: number;
 }
 
@@ -18,7 +17,7 @@ export interface ActiveSessionSeed {
  * object stores — it only puts records.
  *
  * Defaults: id = 'test-session', started_at = Date.now(), target_items = 30,
- * focus_item_id = null, completed_items = 0, pitch_pass_count = 0, label_pass_count = 0.
+ * completed_items = 0, pitch_pass_count = 0, label_pass_count = 0.
  */
 export async function seedActiveSession(page: Page, opts: ActiveSessionSeed = {}): Promise<void> {
   const session: Session = {
@@ -29,7 +28,6 @@ export async function seedActiveSession(page: Page, opts: ActiveSessionSeed = {}
     completed_items: 0,
     pitch_pass_count: 0,
     label_pass_count: 0,
-    focus_item_id: opts.focus_item_id ?? null,
   };
   await seedIndexedDb(page, {
     dbName: 'ear-training',

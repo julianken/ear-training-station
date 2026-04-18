@@ -11,7 +11,6 @@ const session: Session = {
   completed_items: 8,
   pitch_pass_count: 6,
   label_pass_count: 7,
-  focus_item_id: null,
 };
 
 const makeAttempt = (i: number): Attempt => ({

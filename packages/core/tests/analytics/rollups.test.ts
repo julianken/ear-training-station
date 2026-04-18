@@ -59,7 +59,6 @@ describe('currentStreak', () => {
       completed_items: 10,
       pitch_pass_count: 8,
       label_pass_count: 9,
-      focus_item_id: null,
     };
   }
 

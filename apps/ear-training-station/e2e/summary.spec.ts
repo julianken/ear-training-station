@@ -25,7 +25,6 @@ test('viewing a completed session renders the summary report card', async ({ pag
           completed_items: 8,
           pitch_pass_count: 6,
           label_pass_count: 7,
-          focus_item_id: null,
         });
       };
     });

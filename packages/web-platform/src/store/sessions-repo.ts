@@ -19,7 +19,6 @@ export function createSessionsRepo(db: DB): _SessionsRepo {
         completed_items: 0,
         pitch_pass_count: 0,
         label_pass_count: 0,
-        focus_item_id: null,
       };
       await db.put('sessions', session);
       return session;
