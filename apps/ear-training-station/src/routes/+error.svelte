@@ -5,7 +5,7 @@
 
 <svelte:head><title>Error — Ear Training Station</title></svelte:head>
 
-<main class="error-page">
+<section class="error-page">
   <div class="error-card">
     <span class="status-code">{page.status}</span>
     <h1 class="error-heading">Something went wrong</h1>
@@ -14,10 +14,10 @@
     {/if}
     <a href={resolve('/')} class="home-link">Back to home</a>
   </div>
-</main>
+</section>
 
 <style>
-  .error-page {
+  section.error-page {
     display: flex;
     align-items: center;
     justify-content: center;
