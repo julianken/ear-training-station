@@ -4,26 +4,48 @@ Dark-themed PWA for hobbyist instrumentalists who want to play songs by ear. MVP
 
 GitHub: https://github.com/julianken/ear-training-station
 
+## Dev commands
+
+```bash
+pnpm run dev         # Vite dev server on :5173 (app)
+pnpm run test        # Vitest workspace — 361 tests across core + web-platform + ui-tokens
+pnpm run test:watch  # Vitest watch
+pnpm run typecheck   # tsc --noEmit per package (authoritative)
+pnpm run build       # production build (clean, no harness leakage)
+pnpm run lint        # ESLint across all packages (flat config, typescript-eslint + svelte)
+pnpm run test:e2e    # Playwright smoke test (~3s after first run)
+```
+
+Dev-only harness URL (not in production builds):
+```
+http://localhost:5173/harness/audio.html
+```
+Open it after `pnpm run dev`, click Play Round / Start Pitch Detection / Start Digit Recognizer to sanity-check the full audio stack end-to-end.
+
 ## Current state
 
-- **Plan A · Foundation + Core Logic** — ✅ executed. Pure-logic kernel: types, SRS, scheduler, IndexedDB repos, orchestrator.
-- **Plan B · Audio I/O** — ✅ complete and hardened. All 12 tasks plus 2 cleanup PRs merged autonomously.
-- **Plan C0 · Integration Seam** — ✅ complete. 13 PRs merged (PRs #16–#28). Restructured as pnpm monorepo, added round lifecycle reducer, adapters, variability pickers, analytics rollups, design tokens. **Tests:** 221 vitest unit tests + 1 Playwright e2e smoke test, all green. `pnpm run build` produces a clean prod bundle.
-- **Pre-C1 foundation fixes** — ✅ landed via PR #30 (`d6bf577`). KWS `activeThresholds` stale-on-failure bug, `Degree` type leak through event/state/domain chain, settings-repo merge logic for schema evolution.
-- **GitHub Actions CI** — ✅ complete (PRs #31–#35). 6 workflows: CI (typecheck+test+build), Lint (ESLint), E2E (4-shard Playwright), Bundle Size, CodeQL, plus Dependabot. Branch protection on `main` requires all checks. ESLint added with typescript-eslint + eslint-plugin-svelte. **Head of `main`:** `18c6e1d` as of 2026-04-16.
-- **Pre-C1 design decisions resolved:**
-  - `listening → graded` transition: Option B — `CAPTURE_COMPLETE` event with pre-computed outcome. `gradeListeningState()` pure function in core, grading controller in `.svelte.ts`. See project memory `project_listening_graded_design.md` for full rationale.
-  - `VariabilitySettings` / `Settings` bridge: keep separate. Session controller constructs `VariabilitySettings` inline with `{ lockedTimbre: null, lockedRegister: null }`. No DB migration needed.
-- **Plan C1 · UI + Integration** — ⬜ **not yet written.** The spec (`docs/specs/2026-04-14-ear-training-mvp-design.md`) is the source of truth for what and why; Plan C1 needs to be authored before execution. It should cover: Svelte session screen (split-stage chord blocks + scrolling pitch trace), F2 feedback panel with segmented replay, dashboard (mastery bars, key heatmap, Leitner boxes, streak chip), summary screen, service worker for KWS model + sample caching, and wiring the orchestrator (Plan A) to the audio stack (Plan B) behind the round reducer (Plan C0) and real UI.
+| Plan | Status | Summary |
+|------|--------|---------|
+| **Plan A · Foundation + Core Logic** | ✅ complete | Pure-logic kernel: types, SRS, scheduler, IndexedDB repos, orchestrator |
+| **Plan B · Audio I/O** | ✅ complete | All 12 tasks + 2 cleanup PRs. Pitch detection, KWS, playback, mic permission |
+| **Plan C0 · Integration Seam** | ✅ complete | 13 PRs (PRs #16–#28). pnpm monorepo, round lifecycle reducer, adapters, variability pickers, analytics rollups, design tokens |
+| **Pre-C1 fixes** | ✅ landed | PR #30. KWS `activeThresholds` stale-on-failure bug, `Degree` type leak, settings-repo merge logic |
+| **GitHub Actions CI** | ✅ complete | PRs #31–#35. 6 workflows: CI, Lint, E2E (4-shard), Bundle Size, CodeQL + Dependabot |
+| **Plan C1 · UI + Integration** | ✅ complete | 4 sub-plans (C1.1–C1.4). SvelteKit shell, session screen, dashboard, onboarding, PWA/service worker, a11y smoke tests |
+| **Plan C2 · Correctness, Stability, Documentation** | 🔄 in progress | T2–T13 merged (PRs #105–#136). AudioContext leak fix, error boundary, lint hardening, Settings wiring, IDB integration test, DST streak fix, Tone.Offline replay |
 
-**Plan C0 run stats:** 13 PRs merged, 4 real bugs caught by julianken-bot reviews — octave-invariant cents_off mismatch (grade-pitch computed against fixed octave-4 target), UTC day boundaries in streak calculation, LOADING-state threshold guard gap in KWS, Degree return type narrowing for digitLabelToNumber. Zero user escalations.
+**Tests:** 361 vitest unit tests (55 files) + Playwright e2e suite, all green. `pnpm run build` produces a clean prod bundle.
 
-- **julianken-bot review infrastructure** — live at user level, validated end-to-end across 17 review dispatches during the Plan B run:
+**Head of `main`:** `fbc5a41` as of 2026-04-18.
+
+**Plan C0 run stats:** 4 real bugs caught by julianken-bot reviews — octave-invariant cents_off mismatch, UTC day boundaries in streak calculation, LOADING-state threshold guard gap in KWS, Degree return type narrowing for digitLabelToNumber.
+
+- **julianken-bot review infrastructure** — live at user level, validated end-to-end:
   - Skill: `~/.claude/skills/reviewing-as-julianken-bot/` (SKILL.md + output-format.md + dispatch-template.md + merge-flow.md + sanitization.md)
   - Subagent: `~/.claude/agents/julianken-bot.md` (opus, fresh-context, loads the skill via frontmatter)
   - Credentials: macOS Keychain, service `julianken-bot@github.com`, accounts `token` / `password` / `totp-secret` / `recovery-codes`
   - Bot is a `write` collaborator on the repo; Classic PAT with `public_repo` + `repo:invite` scopes
-  - Known PAT-scope gap: `gh pr view` GraphQL needs `read:org` which the current token lacks. The subagent has worked around it by using REST (`gh api repos/.../pulls/N`). Add `read:org` to the token if you want `gh pr view` to work directly.
+  - Known PAT-scope gap: `gh pr view` GraphQL needs `read:org` which the current token lacks. The subagent works around it by using REST (`gh api repos/.../pulls/N`). Add `read:org` to the token if you want `gh pr view` to work directly.
 
 `git log --oneline` shows the full progression since Plan B started.
 
@@ -40,7 +62,7 @@ apps/ear-training-station/  ear-training-station     — app shell, Svelte entry
 
 Cross-package imports use package names: `import { Key } from '@ear-training/core/types/music'`. Within a package, `@/` alias points to that package's `src/`.
 
-## Module surface (what Plan C1 will consume)
+## Module surface
 
 **Types (Plan A, `@ear-training/core`):**
 - `types/music` — `Key`, `Degree`, `PitchClass`, `DEGREES`, `PITCH_CLASSES`, `semitoneOffset`, `keyId`, `itemId`
@@ -57,7 +79,7 @@ Cross-package imports use package names: `import { Key } from '@ear-training/cor
 **Round lifecycle (Plan C0, `@ear-training/core`):**
 - `round/events` — `RoundEvent` discriminated union (7 variants, all with `at_ms: number`)
 - `round/grade-pitch` — `gradePitch(frames, item, minConfidence): PitchGrade`, `PitchObservation`
-- `round/state` — `RoundState` (5 variants), `roundReducer(state, event) → state'`. The `listening → graded` transition is deferred to Plan C1 composition.
+- `round/state` — `RoundState` (5 variants), `roundReducer(state, event) → state'`
 - `variability/pickers` — `pickTimbre(rng, history, settings)`, `pickRegister(...)`, `TimbreId`, `VariabilityHistory`, `VariabilitySettings`
 - `analytics/rollups` — `masteryByDegree(items)`, `masteryByKey(items)`, `leitnerCounts(items)`, `currentStreak(sessions, now, tzOffsetMs?)`
 
@@ -85,14 +107,10 @@ Cross-package imports use package names: `import { Key } from '@ear-training/cor
 
 **Dev harness:** `apps/ear-training-station/harness/audio.html` + `src/harness/audio-harness.ts`. Served by Vite dev at `http://localhost:5173/harness/audio.html`. Excluded from production builds.
 
-## Plan C1 integration items (polish deferred from earlier reviews)
-
-Two items remain from Plan B reviews. Address when Plan C1 lands real callers, NOT as proactive cleanup:
+## Deferred items (address when next relevant)
 
 1. **PR #6 YIN noise test LCG brittleness** — test-hygiene only, not a runtime concern.
-2. **PR #10 `MicPermissionState.unavailable` dead variant** — the union declares `'unavailable'` but `queryMicPermission` never returns it. When Plan C1's settings UI uses the state machine, either remove it or return it on API-missing.
-
-(PR #7 `IN_KEY_CENTS` export was completed in Plan C0 Task 2.)
+2. **PR #10 `MicPermissionState.unavailable` dead variant** — the union declares `'unavailable'` but `queryMicPermission` never returns it. Either remove it or return it on API-missing when the settings UI is next touched.
 
 ## Docs to read first
 
@@ -100,10 +118,11 @@ Two items remain from Plan B reviews. Address when Plan C1 lands real callers, N
 2. `docs/research/2026-04-14-ear-training-research-synthesis.md` — evidence behind the pedagogy
 3. `docs/plans/2026-04-14-plan-a-foundation-core-logic.md` — executed plan (reference for conventions + TDD shape)
 4. `docs/plans/2026-04-14-plan-b-audio-io.md` — executed plan (reference for conventions). Code on `main` is authoritative where it diverges from plan text.
-5. `docs/specs/2026-04-15-plan-c-phase-0-integration-seam-design.md` — Phase C0 design spec (brainstormed + approved)
+5. `docs/specs/2026-04-15-plan-c-phase-0-integration-seam-design.md` — Phase C0 design spec
 6. `docs/plans/2026-04-15-plan-c0-integration-seam.md` — Phase C0 execution plan (14 tasks, all executed)
-7. `docs/mockups/*.html` — visual design decisions (aesthetic, session screen, feedback state, dashboard, summary) as static HTML mockups
-8. **Plan C1 does not exist yet.** Before executing Plan C1 work, author `docs/plans/<today>-plan-c1-ui-integration.md` using the brainstorming skill.
+7. `docs/specs/2026-04-16-plan-c1-ui-integration-design.md` — Phase C1 design spec
+8. `docs/plans/2026-04-16-plan-c1-*.md` — Phase C1 execution plans (C1.1–C1.4, all executed)
+9. `docs/mockups/*.html` — visual design decisions (aesthetic, session screen, feedback state, dashboard, summary) as static HTML mockups
 
 ## Non-negotiable design commitments
 
@@ -119,18 +138,6 @@ From the research synthesis + explicit design picks. Do NOT drift from these dur
 - **Feedback = F2 result panel + segmented-toggle replay** (You / Target / Both).
 
 If a task would drift one of these, stop and ask.
-
-## Dev commands
-
-```bash
-pnpm run dev         # Vite dev server on :5173 (app)
-pnpm run test        # Vitest workspace — 221 tests across core + web-platform + ui-tokens
-pnpm run test:watch  # Vitest watch
-pnpm run typecheck   # tsc --noEmit per package (authoritative)
-pnpm run build       # production build (clean, no harness leakage)
-pnpm run lint        # ESLint across all packages (flat config, typescript-eslint + svelte)
-pnpm run test:e2e    # Playwright smoke test (1 test, ~3s after first run)
-```
 
 ## CI (GitHub Actions)
 
@@ -155,22 +162,20 @@ All checks must pass before merging to `main`. Branch protection enforces this (
 - Vite emits ANSI escape codes when `CI=true`. The bundle-size workflow uses `NO_COLOR=1` to get parseable output.
 - E2E runs via `pnpm exec playwright test --shard=N/4` with `working-directory`, NOT through `pnpm run test:e2e --` (pnpm's arg passthrough adds a literal `--` that Playwright interprets as end-of-flags).
 
-Dev-only harness URL (not in production builds):
-```
-http://localhost:5173/harness/audio.html
-```
-Open it after `pnpm run dev`, click Play Round / Start Pitch Detection / Start Digit Recognizer to sanity-check the full audio stack end-to-end.
-
 ## Known gotchas
 
-- **LSP diagnostics lag behind the filesystem.** When a new file or a new import lands, the editor LSP may flag "Cannot find module" OR "declared but never read" for a minute or two — and sometimes the stale state persists with specific parameter-type errors that look convincingly real. **`pnpm run typecheck` is authoritative.** Trust `tsc` and `vitest` over editor squiggles. This pattern showed up dozens of times during Plans B and C0. The correct default is: see a system-reminder diagnostic, run `pnpm run typecheck`, see it exit 0, move on. Don't loop fixing phantoms.
+- **LSP diagnostics lag behind the filesystem.** When a new file or a new import lands, the editor LSP may flag "Cannot find module" OR "declared but never read" for a minute or two — and sometimes the stale state persists with specific parameter-type errors that look convincingly real. **`pnpm run typecheck` is authoritative.** Trust `tsc` and `vitest` over editor squiggles. This pattern showed up dozens of times during Plans B, C0, and C1. The correct default is: see a system-reminder diagnostic, run `pnpm run typecheck`, see it exit 0, move on. Don't loop fixing phantoms.
 - **Tone.js under jsdom.** Tone touches `AudioContext` at module load. Tone 15.0.4 happens to load cleanly under jsdom without any shim because the factory pattern (`getTimbre(id).createSynth()`) defers `AudioContext` construction. If a future Tone version breaks this, wrap the synth factory in a dynamic import or add a jsdom audio shim — do NOT mock all of Tone.
-- **`AudioWorkletNode` rejects Tone's wrapped context.** `Tone.getContext().rawContext` returns a `standardized-audio-context` wrapper instance, which native `new AudioWorkletNode(ctx, ...)` rejects with "parameter 1 is not of type 'BaseAudioContext'". The harness uses a module-cached **native** `AudioContext` (`pitchAudioContext`) for the YIN worklet specifically; `playRound` still uses Tone's context. Plan C UI code must follow the same split: pitch detection → native context (cached, reused), playback → Tone.
+- **`AudioWorkletNode` rejects Tone's wrapped context.** `Tone.getContext().rawContext` returns a `standardized-audio-context` wrapper instance, which native `new AudioWorkletNode(ctx, ...)` rejects with "parameter 1 is not of type 'BaseAudioContext'". The harness uses a module-cached **native** `AudioContext` (`pitchAudioContext`) for the YIN worklet specifically; `playRound` still uses Tone's context. UI code must follow the same split: pitch detection → native context (cached, reused), playback → Tone.
 - **Harness is NOT in `public/`.** It lives at `apps/ear-training-station/harness/audio.html`, deliberately OUTSIDE of `public/` so Vite's static-copy step doesn't land it in `dist/`. Vite's dev server still serves it at `/harness/audio.html` automatically. Keep the harness dev-only.
 - **tfjs version pinning is load-bearing.** `@tensorflow-models/speech-commands@0.5.4` peer-depends on tfjs-core v3. Do NOT install `@tensorflow/tfjs@4.x` alongside it. Current working config in `packages/web-platform/package.json`: `@tensorflow/tfjs-backend-webgl@3.21.0` + `@tensorflow/tfjs-backend-cpu@3.21.0` + side-effect imports in `packages/web-platform/src/speech/kws-loader.ts`.
 - **Audio-render thread is allocation-sensitive.** Per-call `new Float32Array(...)` inside the worklet's `process()` method creates GC pressure that can glitch audio. The YIN worklet preallocates a `scratch` buffer on the class and reuses it. Apply the same discipline to any future audio-thread code.
 - **pnpm workspace `@/` alias.** Each package's vitest config and tsconfig set `@/` to point to THAT PACKAGE's `src/`. Within core, `@/types/music` resolves to `packages/core/src/types/music.ts`. Within web-platform, `@/store/db` resolves to `packages/web-platform/src/store/db.ts`. Cross-package imports use the full package name: `@ear-training/core/types/music`.
 - **pnpm audit.** CVEs in dev deps got cleared in Plan A. Expect `0 vulnerabilities` on a fresh install; if new ones appear, don't mass-upgrade — audit first.
+- **`+error.svelte` uses `$app/state`, not `$app/stores`.** SvelteKit 2 / Svelte 5 convention. The error page reads `status` and `error` from the `page` store (`import { page } from '$app/state'`), NOT via `$props()`. Using `$props()` in `+error.svelte` will silently receive undefined values.
+- **`no-floating-promises` lint rule is active with `ignoreVoid: false`.** Any new async code (in `.ts`, `.svelte.ts`, and `.svelte` files) must either be properly awaited, use `.catch()`, or carry an `// eslint-disable-next-line @typescript-eslint/no-floating-promises` comment with a brief prose justification. `void expr` is NOT accepted as a suppression — the rule ignores void. Added in C2/T8–T9.
+- **ESLint covers `.svelte` and `.svelte.ts` files with type-aware rules.** The flat config (added in C2/T9) applies `@typescript-eslint` type-checked rules to Svelte source. If a new `.svelte` file triggers a type-aware lint error that isn't a real bug, check the `languageOptions` in `eslint.config.mjs` before suppressing.
+- **Session-scoped `AudioContext`.** Chrome enforces a 6-context-per-page limit. The session controller creates one `AudioContext` per session and closes it on cleanup (C2/T1). Do not create `AudioContext` instances outside the session lifecycle — share the session context instead.
 
 ## Execution convention
 
@@ -187,7 +192,7 @@ Open it after `pnpm run dev`, click Play Round / Start Pitch Detection / Start D
 - **Pure modules** (`packages/core` — types, SRS, scheduler, round reducer, grade-pitch, variability, analytics): full Vitest unit coverage. Test the math with synthetic input. Orchestrator unit tests use in-memory stub repos (`packages/core/tests/helpers/stub-repos.ts`).
 - **Persistence** (IndexedDB): Vitest + `fake-indexeddb` (auto-wired in `packages/web-platform/tests/helpers/test-setup.ts`). Orchestrator integration tests with real repos live in `packages/web-platform/tests/session/`.
 - **Round adapters**: Vitest with injectable `Clock` stub. No real `Date.now()` in tests.
-- **Audio playback, mic input, ML inference**: NOT unit-tested. Covered by the dev harness and a single Playwright smoke test. Do not chase 100% unit coverage of Web Audio — it's a mocking trap.
+- **Audio playback, mic input, ML inference**: NOT unit-tested. Covered by the dev harness and Playwright e2e suite. Do not chase 100% unit coverage of Web Audio — it's a mocking trap.
 - **Design tokens**: Agreement test verifies `tokens.ts` ↔ `tokens.css` have identical values.
 
 ## When in doubt
