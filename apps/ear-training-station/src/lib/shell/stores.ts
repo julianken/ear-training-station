@@ -9,11 +9,28 @@ export const allSessions = writable<Session[]>([]);
 export interface DegradationState {
   kwsUnavailable: boolean;
   persistenceFailing: boolean;
+  /**
+   * `micPermissionDenied` — user never granted mic access (or the API is
+   * unavailable entirely). Distinct from `micLost`: the device was never
+   * connected, so "reconnect" copy would be misleading. Set by the startRound
+   * catch in `ActiveRound.svelte` when the rejection matches a permission or
+   * API-availability error.
+   *
+   * `micLost` — the mic was working and then dropped mid-session (runtime
+   * disconnect). Reserved for a future runtime-disconnect path; not currently
+   * set by any production code.
+   *
+   * Splitting these flags lets `DegradationBanner` render copy appropriate to
+   * each scenario instead of a single ambiguous "reconnect" message. See
+   * GitHub #106 follow-up / Plan C2 Task 3 code review.
+   */
+  micPermissionDenied: boolean;
   micLost: boolean;
 }
 export const degradationState = writable<DegradationState>({
   kwsUnavailable: false,
   persistenceFailing: false,
+  micPermissionDenied: false,
   micLost: false,
 });
 export const consecutiveNullCount = writable(0);
