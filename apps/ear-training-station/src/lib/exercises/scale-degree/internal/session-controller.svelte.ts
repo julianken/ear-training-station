@@ -68,9 +68,26 @@ export interface SessionController {
 }
 
 export function createSessionController(deps: SessionControllerDeps): SessionController {
+  // Stamp the current zone offset onto the in-memory session at
+  // controller construction if the caller didn't already do it at
+  // `sessions.start()` (e.g. legacy rows, test harnesses, or ad-hoc
+  // callers). `currentStreak` uses the per-session value so day-index
+  // is anchored in the zone the user practiced in — not the viewer's
+  // zone when the chip renders after a DST shift. Using the session's
+  // own `started_at` as the reference-moment keeps offset selection
+  // deterministic across render-time clocks.
+  const initialSession: Session =
+    deps.session.tz_offset_ms !== undefined
+      ? deps.session
+      : {
+          ...deps.session,
+          // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot, non-reactive Date construction at controller instantiation; the resulting ms-offset is stamped immutably onto the session and consumed by pure day-index math, never re-read reactively.
+          tz_offset_ms: new Date(deps.session.started_at).getTimezoneOffset() * -60_000,
+        };
+
   class ControllerImpl implements SessionController {
     state = $state<RoundState>({ kind: 'idle' });
-    session = $state<Session | null>(deps.session);
+    session = $state<Session | null>(initialSession);
     currentItem = $state<Item | null>(deps.firstItem);
     capturedAudio = $state<AudioBuffer | null>(null);
     targetAudio = $state<AudioBuffer | null>(null);

@@ -47,13 +47,30 @@ function dayIndex(ts: number, tzOffsetMs: number): number {
   return Math.floor((ts + tzOffsetMs) / DAY_MS);
 }
 
+/**
+ * Current consecutive-day streak ending at `now`.
+ *
+ * Each session contributes its day-index using its OWN `tz_offset_ms` if
+ * present, so a session recorded at 11:30pm EDT viewed later from EST (or
+ * any other timezone, including a browser whose offset shifted across a
+ * DST boundary) still lands on the calendar day the user actually
+ * practiced on. Falls back to the caller-provided `tzOffsetMs` (or 0/UTC
+ * when also omitted) for sessions missing the field — primarily legacy DB
+ * rows written before the field was added; `no IDB version bump needed`.
+ *
+ * The reference "today"/"yesterday" anchor still uses the caller's
+ * offset, since `now` is a render-time observation in the current
+ * timezone.
+ */
 export function currentStreak(
   sessions: ReadonlyArray<Session>,
   now: number,
   tzOffsetMs: number = 0,
 ): number {
   if (sessions.length === 0) return 0;
-  const days = new Set(sessions.map((s) => dayIndex(s.started_at, tzOffsetMs)));
+  const days = new Set(
+    sessions.map((s) => dayIndex(s.started_at, s.tz_offset_ms ?? tzOffsetMs)),
+  );
   const today = dayIndex(now, tzOffsetMs);
   if (!days.has(today) && !days.has(today - 1)) return 0;
   let streak = 0;

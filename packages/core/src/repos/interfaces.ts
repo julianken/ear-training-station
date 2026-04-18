@@ -19,6 +19,14 @@ export interface StartSessionInput {
   id: string;
   target_items: number;
   started_at: number;
+  /**
+   * Optional ms-offset from UTC to local time at session creation (i.e.
+   * `new Date().getTimezoneOffset() * -60_000`). Persisted on the row so
+   * the day-index used by `currentStreak` is anchored in the zone the
+   * user practiced in, not the viewer's current zone. See
+   * `types/domain#Session.tz_offset_ms` for rationale.
+   */
+  tz_offset_ms?: number;
 }
 
 export interface CompleteSessionInput {

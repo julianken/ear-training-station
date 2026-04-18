@@ -19,6 +19,7 @@ export function createSessionsRepo(db: DB): _SessionsRepo {
         completed_items: 0,
         pitch_pass_count: 0,
         label_pass_count: 0,
+        ...(input.tz_offset_ms !== undefined ? { tz_offset_ms: input.tz_offset_ms } : {}),
       };
       await db.put('sessions', session);
       return session;
