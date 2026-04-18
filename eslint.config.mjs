@@ -17,6 +17,26 @@ export default tseslint.config(
   // Base TypeScript config for all .ts files
   ...tseslint.configs.recommended,
 
+  // Type-aware rules (requires projectService for TS program lookup).
+  // Scoped to .ts files only; Svelte files need parser-level project wiring we
+  // do not yet configure, so we leave them on the non-type-aware rules set.
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      // Catches fire-and-forget Promises — the single highest-leverage
+      // agentic guardrail (Plan C2 Task 8, issue #108). Any intentional
+      // fire-and-forget must suppress with // eslint-disable-next-line and
+      // a prose justification; do NOT use the `void` operator.
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
+    },
+  },
+
   // Svelte support (activates only on .svelte files)
   ...svelte.configs['flat/recommended'],
 
