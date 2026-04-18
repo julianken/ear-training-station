@@ -98,6 +98,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     #recorderHandle: RecorderHandle | null = null;
     #captureEndTimer: number | null = null;
     #disposed = false;
+    #renderToken: number = 0;
     #history: VariabilityHistory = { lastTimbre: null, lastRegister: null };
     // Round-history for the Leitner + interleaving scheduler. Populated on
     // each successful graded transition so selectNextItem() can enforce
@@ -252,6 +253,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       if (this.state.kind !== 'idle') return; // guard against double-start
       if (this.currentItem == null) return;
 
+      // Increment the render token so any in-flight renderTargetBuffer()
+      // from a prior canceled round will be discarded when it resolves.
+      this.#renderToken++;
+      this.targetAudio = null;
+
       // Load user settings lazily on the first round, then reuse for the life
       // of the session. settingsRepo.getOrDefault() falls back to
       // DEFAULT_SETTINGS if IDB read fails or the row is absent, so we never
@@ -284,7 +290,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       });
 
       // Lazy-load the audio handles (web-platform modules)
-      const { playRound } = await import('@ear-training/web-platform/audio/player');
+      const { playRound, renderTargetBuffer } = await import('@ear-training/web-platform/audio/player');
       const { startPitchDetector } = await import('@ear-training/web-platform/pitch/pitch-detector');
       const { startKeywordSpotter } = await import('@ear-training/web-platform/speech/keyword-spotter');
       const { startAudioRecorder } = await import('@ear-training/web-platform/mic/recorder');
@@ -319,6 +325,30 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       this.#currentTargetHz = target.hz;
       this.#playHandle = playRound({ timbreId: timbre, cadence, target, gapSec: 0.2 });
 
+      // Render the target note to an AudioBuffer in parallel so the
+      // ReplayBar's Target / Both replay modes have a buffer to play.
+      // Offline rendering runs much faster than real time — a ~2s target
+      // renders in a few ms — so the buffer is ready well before the user
+      // reaches the graded state (earliest ~10s: cadence 3.2s + gap 0.2s +
+      // target 1.5s + 5s capture). Handled `.then(...).catch(...)` chain —
+      // replay is a non-essential affordance; a render failure must not
+      // block the round.
+      //
+      // Race guard: capture the render token at render-start. If the round
+      // is canceled (and optionally restarted) by the time the render
+      // resolves, the token will have been incremented and the stale buffer
+      // is discarded — preventing a timbre-A render from clobbering the
+      // null reset or a fresh timbre-B render from a new round on the same item.
+      const renderToken = this.#renderToken;
+      renderTargetBuffer({ timbreId: timbre, target })
+        .then((buf) => {
+          if (this.#disposed || renderToken !== this.#renderToken) return;
+          this.targetAudio = buf;
+        })
+        .catch((e) => {
+          console.warn('session-controller: target render failed', e);
+        });
+
       // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting here would serialize reducer work with the play-handle wiring below; fire-and-forget is the intended shape.
       this.#dispatch({ type: 'CADENCE_STARTED', at_ms: Date.now() });
 
@@ -349,6 +379,11 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     cancelRound(): void {
       if (this.#disposed) return;
       consecutiveNullCount.set(0);
+      // Invalidate any in-flight renderTargetBuffer() so a stale render from
+      // this round cannot clobber the buffer when the next round (possibly
+      // on the same item with a different timbre) kicks off.
+      this.#renderToken++;
+      this.targetAudio = null;
       // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. cancelRound() is synchronous (called from UI click handlers) — awaiting would force the method async and is architecturally incorrect.
       this.#dispatch({ type: 'USER_CANCELED', at_ms: Date.now() });
       this.#stopAudioHandles();
