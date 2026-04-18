@@ -102,3 +102,45 @@ export function playRound(input: PlayRoundInput): PlayRoundHandle {
     cancel,
   };
 }
+
+export interface RenderTargetInput {
+  timbreId: TimbreId;
+  target: NoteEvent;
+}
+
+/**
+ * Render the target note to an `AudioBuffer` using the same timbre as live
+ * playback. Used by the ReplayBar's Target / Both replay modes so the user
+ * can A/B their capture against the reference.
+ *
+ * Renders just the target note (no cadence) via `Tone.Offline`. A small tail
+ * is appended so long release envelopes (e.g. the `pad` timbre) don't click
+ * at the end of the buffer. Offline rendering typically runs much faster than
+ * real time — for a ~2s target the render is imperceptible.
+ *
+ * No unit tests: `Tone.Offline` requires a real AudioContext and is not
+ * meaningfully testable in Vitest/jsdom. Integration coverage is provided by
+ * the dev harness and the Playwright round-graded spec.
+ */
+export async function renderTargetBuffer(
+  input: RenderTargetInput,
+): Promise<AudioBuffer> {
+  // 0.5s tail for release envelopes (pad timbre has release=1.5s but the
+  // audible tail beyond 0.5s is near-silent; longer tails just inflate the
+  // buffer without perceptible benefit).
+  const durationSec = input.target.durationSec + 0.5;
+  const toneBuffer = await Tone.Offline((): void => {
+    const synth = getTimbre(input.timbreId).createSynth();
+    synth.toDestination();
+    synth.triggerAttackRelease(
+      midiToHz(input.target.midi),
+      input.target.durationSec,
+      0,
+    );
+  }, durationSec);
+  const buf = toneBuffer.get();
+  if (buf == null) {
+    throw new Error('renderTargetBuffer: Tone.Offline produced no buffer');
+  }
+  return buf;
+}
