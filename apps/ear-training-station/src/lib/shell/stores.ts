@@ -50,3 +50,19 @@ export async function hydrateShellStores(): Promise<void> {
   allItems.set(items);
   allSessions.set(sessions);
 }
+
+/**
+ * Shared catch handler for `hydrateShellStores()` rejection.
+ *
+ * Used by `+layout.svelte` on hydration failure (Safari private mode,
+ * Firefox strict privacy, quota exceeded, etc.). Extracted so tests can
+ * exercise the exact code the layout runs, instead of copying the body —
+ * see `tests/shell/hydrate-error.integration.test.ts` and GitHub #105.
+ *
+ * Logs to console.error and flips `degradationState.persistenceFailing`
+ * so `DegradationBanner` renders the "Saving locally failed" message.
+ */
+export function handleHydrationError(err: unknown): void {
+  console.error('shell: hydrateShellStores failed, persistence unavailable', err);
+  degradationState.update((s) => ({ ...s, persistenceFailing: true }));
+}

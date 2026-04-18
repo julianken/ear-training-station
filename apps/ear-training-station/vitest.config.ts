@@ -43,6 +43,14 @@ export default defineConfig({
         find: '$app/navigation',
         replacement: fileURLToPath(new URL('./tests/__mocks__/app-navigation.ts', import.meta.url)),
       },
+      // virtual:pwa-register → test stub (vite-plugin-pwa is not wired into vitest).
+      // Needed so `+layout.svelte` can be imported by component tests — even though
+      // the dynamic import is gated on MODE === 'production' (always false in tests),
+      // Vite still resolves the import specifier during module transform.
+      {
+        find: 'virtual:pwa-register',
+        replacement: fileURLToPath(new URL('./tests/__mocks__/virtual-pwa-register.ts', import.meta.url)),
+      },
       // @/ context-sensitive: core files → core src, web-platform files → web-platform src,
       // otherwise → app src. Uses customResolver to inspect the importer path.
       {
