@@ -7,17 +7,13 @@
   "exports": {
     "./tier2": "./src/tier2-gum-mock.ts",
     "./tier3": "./src/tier3-controller.ts",
-    "./seed-idb": "./src/seed-idb.ts",
-    "./wav-gen": "./src/wav-gen.ts"
+    "./seed-idb": "./src/seed-idb.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.56.0 <2.0.0"
-  },
-  "dependencies": {
-    "wavefile": "^11.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
