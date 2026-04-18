@@ -303,7 +303,6 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
           completed_items: completed,
           pitch_pass_count: this.#pitchPasses,
           label_pass_count: this.#labelPasses,
-          focus_item_id: sessionRow.focus_item_id,
         });
         this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
         this.currentItem = null;
@@ -322,7 +321,6 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
           completed_items: completed,
           pitch_pass_count: this.#pitchPasses,
           label_pass_count: this.#labelPasses,
-          focus_item_id: sessionRow.focus_item_id,
         });
         this.session = { ...sessionRow, ended_at: Date.now(), completed_items: completed };
         this.currentItem = null;

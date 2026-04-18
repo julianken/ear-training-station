@@ -69,8 +69,6 @@ export interface Session {
   completed_items: number;
   pitch_pass_count: number;
   label_pass_count: number;
-  /** Item id highlighted on the summary as "tomorrow's focus". */
-  focus_item_id: string | null;
 }
 
 export interface Settings {

@@ -35,7 +35,6 @@ const baseSession: Session = {
   completed_items: 0,
   pitch_pass_count: 0,
   label_pass_count: 0,
-  focus_item_id: null,
 };
 
 function makeDeps() {
