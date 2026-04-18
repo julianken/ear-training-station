@@ -546,3 +546,80 @@ describe('SessionController — consecutiveNullCount store', () => {
     expect(get(consecutiveNullCount)).toBe(0);
   });
 });
+
+describe('SessionController — AudioContext lifecycle (GitHub #104 / Plan C2 Task 1)', () => {
+  // Build a mock AudioContext with a `close` spy so we can assert lifecycle.
+  function makeMockContext() {
+    const close = vi.fn(async () => undefined);
+    const ctx = new (class {
+      currentTime = 0;
+      sampleRate = 48000;
+      audioWorklet = { addModule: vi.fn(async () => undefined) };
+      createBuffer() { return {} as AudioBuffer; }
+      createMediaStreamSource() { return { connect: vi.fn(), disconnect: vi.fn() }; }
+      close = close;
+    })() as unknown as AudioContext;
+    return { ctx, close };
+  }
+
+  it('startRound() calls getAudioContext() at most once across multiple rounds', async () => {
+    const { ctx } = makeMockContext();
+    const getAudioContext = vi.fn(() => ctx);
+    const deps = { ...makeDeps(), getAudioContext };
+    const ctrl = createSessionController(deps);
+
+    // startRound() pulls in web-platform modules that touch browser APIs the
+    // jsdom env doesn't provide; the call will reject partway through. We only
+    // care that getAudioContext was consulted on the way in.
+    await ctrl.startRound().catch(() => {});
+
+    // Drive the controller back to idle so a second startRound() would pass
+    // its own kind-guard. _forceState bypasses the normal flow.
+    ctrl._forceState({ kind: 'idle' } as never);
+    await ctrl.startRound().catch(() => {});
+
+    // Even across two startRound attempts, only one AudioContext is created.
+    expect(getAudioContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispose() closes the cached AudioContext', async () => {
+    const { ctx, close } = makeMockContext();
+    const getAudioContext = vi.fn(() => ctx);
+    const deps = { ...makeDeps(), getAudioContext };
+    const ctrl = createSessionController(deps);
+
+    await ctrl.startRound().catch(() => {});
+    expect(getAudioContext).toHaveBeenCalled();
+
+    ctrl.dispose();
+
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispose() is safe when no round ever ran and no context was created', () => {
+    const { close } = makeMockContext();
+    const getAudioContext = vi.fn(() => makeMockContext().ctx);
+    const deps = { ...makeDeps(), getAudioContext };
+    const ctrl = createSessionController(deps);
+
+    // No startRound() → no context created → dispose() must not try to close
+    // anything and must not throw.
+    expect(() => ctrl.dispose()).not.toThrow();
+    expect(getAudioContext).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('dispose() is idempotent and only closes the context once', async () => {
+    const { ctx, close } = makeMockContext();
+    const getAudioContext = vi.fn(() => ctx);
+    const deps = { ...makeDeps(), getAudioContext };
+    const ctrl = createSessionController(deps);
+
+    await ctrl.startRound().catch(() => {});
+
+    ctrl.dispose();
+    ctrl.dispose();
+
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+});

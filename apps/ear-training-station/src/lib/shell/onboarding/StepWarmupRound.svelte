@@ -27,6 +27,11 @@
 
   let controller = $state<SessionController | null>(null);
 
+  // Session-scoped AudioContext: created once when the warmup session begins,
+  // reused if the factory is called again, closed on controller.dispose().
+  // See GitHub #104 / Plan C2 Task 1 for rationale.
+  let sessionAudioContext: AudioContext | null = null;
+
   onMount(async () => {
     const deps = await getDeps();
     const id = crypto.randomUUID();
@@ -38,7 +43,10 @@
       attemptsRepo: deps.attempts,
       sessionsRepo: deps.sessions,
       settingsRepo: deps.settings,
-      getAudioContext: () => new AudioContext(),
+      getAudioContext: () => {
+        if (sessionAudioContext == null) sessionAudioContext = new AudioContext();
+        return sessionAudioContext;
+      },
       getMicStream: async () => {
         const { requestMicStream } = await import('@ear-training/web-platform/mic/permission');
         const handle = await requestMicStream();

@@ -41,6 +41,13 @@
       return;
     }
 
+    // Session-scoped AudioContext: created once when the session begins, reused
+    // for every round, closed on controller.dispose(). Chrome caps concurrent
+    // contexts at ~6; a fresh context per round silently exhausts the budget
+    // and breaks the pitch worklet (every round then grades as pitch-fail,
+    // corrupting SRS). See GitHub #104 / Plan C2 Task 1.
+    let sessionAudioContext: AudioContext | null = null;
+
     controller = createSessionController({
       session: data.session,
       firstItem: items[0],
@@ -48,7 +55,10 @@
       attemptsRepo: deps.attempts,
       sessionsRepo: deps.sessions,
       settingsRepo: deps.settings,
-      getAudioContext: () => new AudioContext(),
+      getAudioContext: () => {
+        if (sessionAudioContext == null) sessionAudioContext = new AudioContext();
+        return sessionAudioContext;
+      },
       getMicStream: async () => {
         const { requestMicStream } = await import('@ear-training/web-platform/mic/permission');
         const handle = await requestMicStream();
