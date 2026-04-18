@@ -267,7 +267,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       });
 
       // Lazy-load the audio handles (web-platform modules)
-      const { playRound } = await import('@ear-training/web-platform/audio/player');
+      const { playRound, renderTargetBuffer } = await import('@ear-training/web-platform/audio/player');
       const { startPitchDetector } = await import('@ear-training/web-platform/pitch/pitch-detector');
       const { startKeywordSpotter } = await import('@ear-training/web-platform/speech/keyword-spotter');
       const { startAudioRecorder } = await import('@ear-training/web-platform/mic/recorder');
@@ -301,6 +301,26 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       const target = buildTarget(this.currentItem.key, this.currentItem.degree, register);
       this.#currentTargetHz = target.hz;
       this.#playHandle = playRound({ timbreId: timbre, cadence, target, gapSec: 0.2 });
+
+      // Render the target note to an AudioBuffer in parallel so the
+      // ReplayBar's Target / Both replay modes have a buffer to play.
+      // Offline rendering runs much faster than real time — a ~2s target
+      // renders in a few ms — so the buffer is ready well before the user
+      // reaches the graded state (earliest ~10s: cadence 3.2s + gap 0.2s +
+      // target 1.5s + 5s capture). Handled `.then(...).catch(...)` chain —
+      // replay is a non-essential affordance; a render failure must not
+      // block the round.
+      renderTargetBuffer({ timbreId: timbre, target })
+        .then((buf) => {
+          // Guard against a late-arriving render after the user advanced to
+          // the next round (which resets targetAudio to null in next()) or
+          // disposed the controller.
+          if (this.#disposed) return;
+          this.targetAudio = buf;
+        })
+        .catch((e) => {
+          console.warn('session-controller: target render failed', e);
+        });
 
       // eslint-disable-next-line @typescript-eslint/no-floating-promises -- #dispatch is the internal event reducer; it transitions state and handles its own error paths. Awaiting here would serialize reducer work with the play-handle wiring below; fire-and-forget is the intended shape.
       this.#dispatch({ type: 'CADENCE_STARTED', at_ms: Date.now() });
