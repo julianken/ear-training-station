@@ -121,6 +121,9 @@ importers:
       '@tensorflow/tfjs-backend-webgl':
         specifier: 3.21.0
         version: 3.21.0(@tensorflow/tfjs-core@3.21.0)
+      '@tensorflow/tfjs-core':
+        specifier: 3.21.0
+        version: 3.21.0
       idb:
         specifier: 8.0.0
         version: 8.0.0
