@@ -22,34 +22,47 @@ const keyArb: fc.Arbitrary<Key> = fc.record({
   quality: fc.constantFrom(...QUALITIES),
 });
 
-const degreeArb: fc.Arbitrary<Degree> = fc.constantFrom(...DEGREES);
-
-const itemArb: fc.Arbitrary<Item> = fc.record({
-  degree: degreeArb,
-  key: keyArb,
-  box: fc.constantFrom(...BOXES),
-  accuracy: fc.record({
-    pitch: fc.double({ min: 0, max: 1, noNaN: true }),
-    label: fc.double({ min: 0, max: 1, noNaN: true }),
-  }),
-  attempts: fc.integer({ min: 0, max: 100 }),
-  consecutive_passes: fc.integer({ min: 0, max: 10 }),
-  last_seen_at: fc.integer({ min: 0, max: 2_000_000_000_000 }),
-  due_at: fc.integer({ min: 0, max: 2_000_000_000_000 }),
-  created_at: fc.integer({ min: 0, max: 2_000_000_000_000 }),
-}).map((partial) => ({
-  id: itemId(partial.degree, partial.key),
-  ...partial,
-  recent: [],
-})) as fc.Arbitrary<Item>;
+function itemArbWithDegree(degree: Degree): fc.Arbitrary<Item> {
+  return fc.record({
+    key: keyArb,
+    box: fc.constantFrom(...BOXES),
+    accuracy: fc.record({
+      pitch: fc.double({ min: 0, max: 1, noNaN: true }),
+      label: fc.double({ min: 0, max: 1, noNaN: true }),
+    }),
+    attempts: fc.integer({ min: 0, max: 100 }),
+    consecutive_passes: fc.integer({ min: 0, max: 10 }),
+    last_seen_at: fc.integer({ min: 0, max: 2_000_000_000_000 }),
+    due_at: fc.integer({ min: 0, max: 2_000_000_000_000 }),
+    created_at: fc.integer({ min: 0, max: 2_000_000_000_000 }),
+  }).map((partial) => ({
+    id: itemId(degree, partial.key),
+    degree,
+    ...partial,
+    recent: [],
+  })) as fc.Arbitrary<Item>;
+}
 
 /**
- * Generate a history whose entries reference items from the SAME run —
- * this matches how the controller populates `#roundHistory` (only completed
- * rounds make it in).
+ * Items arbitrary that GUARANTEES ≥2 distinct degrees. This is the envelope
+ * inside which `selectNextItem` is provably non-null: the fallback tier drops
+ * the same-key-streak constraint but still applies `isBlockedSameDegree`,
+ * which blocks at most ONE degree (the last history entry's). With ≥2
+ * distinct degrees present, at least one item survives fallback filtering.
+ * Anything outside this envelope is a legitimate-null corner (e.g. a
+ * 5-item pool all on degree 5, last round was degree 5 → eligible is empty
+ * by construction, not by bug). Narrowing the generator turns the property
+ * into a real invariant rather than a distribution-dependent sampling bet.
  */
+const itemsArb: fc.Arbitrary<Item[]> = fc.tuple(
+  fc.uniqueArray(fc.constantFrom(...DEGREES), { minLength: 2, maxLength: 7 }),
+  fc.array(fc.constantFrom(...DEGREES), { minLength: 3, maxLength: 26 }),
+).chain(([required, extras]) => {
+  const degrees = [...required, ...extras];
+  return fc.tuple(...degrees.map(itemArbWithDegree)) as fc.Arbitrary<Item[]>;
+});
+
 function historyFromItemsArb(items: ReadonlyArray<Item>): fc.Arbitrary<RoundHistoryEntry[]> {
-  if (items.length === 0) return fc.constant([]);
   const entryArb: fc.Arbitrary<RoundHistoryEntry> = fc.constantFrom(...items).map((it) => ({
     itemId: it.id,
     degree: it.degree,
@@ -58,8 +71,6 @@ function historyFromItemsArb(items: ReadonlyArray<Item>): fc.Arbitrary<RoundHist
   return fc.array(entryArb, { maxLength: 15 });
 }
 
-// Seeded-ish rng so a failing case is deterministic when replayed. fast-check
-// controls its own seed via fc.assert; we just need a stable PRNG shape.
 function mulberry32(seed: number): () => number {
   let t = seed >>> 0;
   return () => {
@@ -71,13 +82,12 @@ function mulberry32(seed: number): () => number {
 }
 
 describe('selectNextItem — property', () => {
-  it('returns non-null for any items.length >= 5 and history.length <= 15', () => {
-    // Capture any null diagnostic so a reproduced failure is actionable.
+  it('returns non-null when items span ≥2 degrees (fallback envelope)', () => {
     let capturedDiag: SelectNextItemNullDiag | null = null;
 
     fc.assert(
       fc.property(
-        fc.array(itemArb, { minLength: 5, maxLength: 28 }).chain((items) =>
+        itemsArb.chain((items) =>
           fc.tuple(
             fc.constant(items),
             historyFromItemsArb(items),
@@ -90,18 +100,12 @@ describe('selectNextItem — property', () => {
           const result = selectNextItem(items, history, now, rng, (diag) => {
             if (capturedDiag == null) capturedDiag = diag;
           });
-          // Expected invariant: with >=5 items across varied degrees/keys, the
-          // scheduler should always find at least one eligible pick under the
-          // fallback soft-constraint tier.
           return result !== null;
         },
       ),
-      { numRuns: 1000 },
+      { numRuns: 2000 },
     );
 
-    // If the above assertion fails, fast-check throws and we never reach here.
-    // This guard is belt-and-suspenders: if onNull fired but the property
-    // still held (shouldn't happen), surface it.
     expect(capturedDiag).toBeNull();
   });
 });
