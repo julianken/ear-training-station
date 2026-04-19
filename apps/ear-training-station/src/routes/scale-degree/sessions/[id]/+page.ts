@@ -25,6 +25,23 @@ export async function load({ params, url }) {
   if (session.ended_at == null && isReload && !bypassAbandon) {
     const attempts = await deps.attempts.findBySession(session.id);
     const rollup = rollUpAbandonedSession(attempts);
+    // Observability for #155: this branch ends an in-progress session with
+    // `completed_items = attempts.length` and sets `ended_at`, producing the
+    // same terminal UI state as (a) target_items reached or (b) scheduler
+    // null-return. A QA probe that hits this path without distinguishing it
+    // from (b) will misattribute the symptom to a scheduler bug (see
+    // docs/research/2026-04-19-scheduler-rca-155.md). Emit a loud warning so
+    // the three completion paths can be told apart from console logs alone.
+    // Wrapped in try so a patched/throwing console.warn cannot break load.
+    try {
+      console.warn('[session-abandon-on-reload]', {
+        sessionId: session.id,
+        completedRounds: attempts.length,
+        targetItems: session.target_items,
+      });
+    } catch {
+      /* no-op */
+    }
     await deps.sessions.complete(session.id, rollup);
     const updated: Session = { ...session, ...rollup };
     return { session: updated, attempts };
