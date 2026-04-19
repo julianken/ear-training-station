@@ -88,6 +88,7 @@ describe('SessionController next() — RCA #155 repro', () => {
       attemptsRepo,
       sessionsRepo: {
         start: vi.fn(),
+        advance: vi.fn(),
         complete: sessionsComplete,
         get: vi.fn(async () => sessionRow),
         findRecent: vi.fn(async () => []),

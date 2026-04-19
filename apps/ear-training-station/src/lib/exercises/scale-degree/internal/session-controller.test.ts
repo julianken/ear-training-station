@@ -43,7 +43,7 @@ function makeDeps() {
     firstItem: baseItem,
     itemsRepo: { get: vi.fn(), listAll: vi.fn(async () => []), findDue: vi.fn(async () => [baseItem]), findByBox: vi.fn(), put: vi.fn(), putMany: vi.fn() },
     attemptsRepo: { append: vi.fn(), findBySession: vi.fn(async () => []), findByItem: vi.fn() },
-    sessionsRepo: { start: vi.fn(), complete: vi.fn(), get: vi.fn(async () => baseSession), findRecent: vi.fn() },
+    sessionsRepo: { start: vi.fn(), advance: vi.fn(), complete: vi.fn(), get: vi.fn(async () => baseSession), findRecent: vi.fn() },
     settingsRepo: { getOrDefault: vi.fn(async () => ({ function_tooltip: true, auto_advance_on_hit: true, session_length: 30, reduced_motion: 'auto' as const, onboarded: true })), update: vi.fn() },
     getAudioContext: () => new (class { currentTime = 0; sampleRate = 48000; audioWorklet = { addModule: vi.fn(async () => undefined) }; createBuffer() { return {} as AudioBuffer; } createMediaStreamSource() { return { connect: vi.fn(), disconnect: vi.fn() }; } })() as unknown as AudioContext,
     getMicStream: async () => ({} as MediaStream),
@@ -339,6 +339,69 @@ describe('SessionController — next()', () => {
 
     await expect(ctrl.next()).resolves.toBeUndefined();
     expect(deps.sessionsRepo.complete).not.toHaveBeenCalled();
+  });
+
+  // Issue #157: between rounds the controller previously mutated
+  // completed_items in memory but never wrote it back to IDB. If the tab
+  // closed/crashed mid-session, the persisted row showed completed_items: 0
+  // even though N attempts existed. next() must call sessionsRepo.advance()
+  // on the non-terminal branch with the same counters it applies to
+  // this.session.
+  it('calls sessionsRepo.advance() with updated counters on the non-terminal branch', async () => {
+    const nextItem: Item = { ...baseItem, id: '1-C-major', degree: 1 };
+    const deps = makeDeps();
+    deps.itemsRepo.listAll = vi.fn(async () => [baseItem, nextItem]);
+    // Session with 5/30 done so far; pre-round pitch/label counters.
+    const session: Session = {
+      ...baseSession,
+      completed_items: 5,
+      target_items: 30,
+      pitch_pass_count: 4,
+      label_pass_count: 5,
+    };
+    const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
+
+    ctrl._forceState(gradedState);
+    ctrl._seedRoundHistory([{ itemId: baseItem.id, degree: baseItem.degree, key: baseItem.key }]);
+    // _forceState bypasses the #dispatch persistence path; simulate its
+    // effect on the running counters (pitch + label both passed this round).
+    ctrl._forceRunningCounters(5, 6);
+
+    await ctrl.next();
+
+    // Non-terminal branch: complete() must NOT fire, advance() must.
+    expect(deps.sessionsRepo.complete).not.toHaveBeenCalled();
+    expect(deps.sessionsRepo.advance).toHaveBeenCalledTimes(1);
+    expect(deps.sessionsRepo.advance).toHaveBeenCalledWith(
+      'sess-1',
+      {
+        completed_items: 6, // 5 (prior) + 1 (this round)
+        pitch_pass_count: 5, // running counter after this round
+        label_pass_count: 6, // running counter after this round
+      },
+    );
+    // The in-memory session should reflect the same counter the repo got.
+    expect(ctrl.session?.completed_items).toBe(6);
+  });
+
+  it('does NOT call advance() on the terminal branch (complete() fires instead)', async () => {
+    const deps = makeDeps();
+    const session: Session = {
+      ...baseSession,
+      completed_items: 29,
+      target_items: 30,
+      pitch_pass_count: 20,
+      label_pass_count: 25,
+    };
+    const ctrl = createSessionController({ ...deps, session, firstItem: baseItem });
+
+    ctrl._forceState(gradedState);
+    ctrl._forceRunningCounters(21, 26);
+
+    await ctrl.next();
+
+    expect(deps.sessionsRepo.complete).toHaveBeenCalledTimes(1);
+    expect(deps.sessionsRepo.advance).not.toHaveBeenCalled();
   });
 });
 
