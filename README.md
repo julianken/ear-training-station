@@ -2,12 +2,6 @@
 
 A dark-themed PWA for hobbyist instrumentalists who want to learn to play songs by ear. One focused exercise: hear a cadence, hear a target scale degree, sing it back, and say the digit.
 
-## Screenshots
-
-![Active session](flow-08-real-session.png)
-
-![Round graded](flow-10-active-round-graded.png)
-
 ## What it is
 
 Ear Training Station teaches **functional scale-degree hearing** — the ability to identify where a note sits within a key. Every round establishes a tonic via a full cadence first, then plays one target note. You sing the pitch back and say the digit aloud ("five"). Both are graded.
@@ -29,7 +23,7 @@ This is not interval drills. The cadence resets tonal context every time, which 
 - **Variability by default** — key, timbre, register, and cadence voicing vary across rounds
 - **Honest progress UI** — per-degree mastery bars, per-key heatmap, Leitner box counts, streak chip; no XP or confetti
 - **Sing-and-verify** — pitch detection and keyword spotting run in parallel; both must match
-- **PWA / offline** — service worker caches the KWS model and audio samples after first load
+- **PWA / offline** — service worker caches the TensorFlow.js KWS model after first load; works offline
 
 ## Getting started
 
