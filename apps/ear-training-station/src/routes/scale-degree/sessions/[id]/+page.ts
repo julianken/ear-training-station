@@ -32,15 +32,21 @@ export async function load({ params, url }) {
     // from (b) will misattribute the symptom to a scheduler bug (see
     // docs/research/2026-04-19-scheduler-rca-155.md). Emit a loud warning so
     // the three completion paths can be told apart from console logs alone.
+    // Gate the warn to dev/test so real users' consoles stay quiet on every
+    // legitimate F5 reload. Vite strips `import.meta.env.DEV === false` dead
+    // branches at build time, so the whole block (including the object
+    // allocation) disappears from the prod bundle.
     // Wrapped in try so a patched/throwing console.warn cannot break load.
-    try {
-      console.warn('[session-abandon-on-reload]', {
-        sessionId: session.id,
-        completedRounds: attempts.length,
-        targetItems: session.target_items,
-      });
-    } catch {
-      /* no-op */
+    if (dev || import.meta.env.MODE === 'test') {
+      try {
+        console.warn('[session-abandon-on-reload]', {
+          sessionId: session.id,
+          completedRounds: attempts.length,
+          targetItems: session.target_items,
+        });
+      } catch {
+        /* no-op */
+      }
     }
     await deps.sessions.complete(session.id, rollup);
     const updated: Session = { ...session, ...rollup };

@@ -6,12 +6,25 @@ import { createSessionsRepo } from '@ear-training/web-platform/store/sessions-re
 import type { Attempt } from '@ear-training/core/types/domain';
 
 /**
- * RCA #155 — reproduce the exact symptom (session ends with
- * completed_items=attempts.length, ended_at set, summary renders) via the
- * REFRESH-ABANDON auto-complete path in +page.ts, not via the scheduler.
+ * RCA #155 — REFERENCE-SHAPE CHECK for the refresh-abandon auto-complete path
+ * in `+page.ts`. This is NOT a proof that the real `load()` function fires
+ * the path: it does not import or invoke `load()`. It reimplements the
+ * rollup shape (`ended_at`, `completed_items = attempts.length`,
+ * pass-counts) against real fake-indexeddb and asserts the resulting
+ * persisted `Session` row matches the probe report bit-for-bit.
  *
- * This test does not import +page.ts directly (SvelteKit runtime),
- * but simulates the same logic against real fake-indexeddb.
+ * What this proves: the rollup shape used by `rollUpAbandonedSession` +
+ * `sessions.complete()` produces the symptom the probe filed (`completed_items: 6`
+ * with `target_items: 15` and `ended_at` set).
+ *
+ * What this does NOT prove: that `+page.ts:load()` actually enters the
+ * refresh-abandon branch under any given navigation. The branch condition
+ * (`isReload === true`) is verified by reading the code, not exercised here.
+ *
+ * To promote to a real integration test, `load()` would need to be imported
+ * and called with mocked `params`/`url`/`fetch`/`performance` — blocked on
+ * a `$app/environment` vitest alias and a `$lib/shell/deps` mock. Filed as a
+ * test-hygiene follow-up.
  */
 
 function mkAttempt(idx: number): Attempt {
@@ -30,7 +43,7 @@ function mkAttempt(idx: number): Attempt {
   };
 }
 
-describe('RCA #155 — refresh-abandon auto-completes a session mid-run', () => {
+describe('RCA #155 — reference-shape check for refresh-abandon rollup', () => {
   let db: DB;
 
   beforeEach(async () => {
@@ -39,7 +52,7 @@ describe('RCA #155 — refresh-abandon auto-completes a session mid-run', () => 
     db = await openEarTrainingDB('ear-training-rca-155');
   });
 
-  it('simulates a mid-session reload: session is auto-completed with completed_items=attempts.length', async () => {
+  it('reimplements the +page.ts rollup shape and confirms it produces the probe-reported symptom', async () => {
     const sessions = createSessionsRepo(db);
     const attempts = createAttemptsRepo(db);
 
@@ -57,11 +70,13 @@ describe('RCA #155 — refresh-abandon auto-completes a session mid-run', () => 
       await attempts.append(mkAttempt(i));
     }
 
-    // 3. Simulate the +page.ts refresh-abandon logic.
+    // 3. Reimplement (not invoke) the +page.ts refresh-abandon logic. The
+    //    real branch at +page.ts:25 is gated on `isReload === true` and
+    //    `session.ended_at == null`; this test only reproduces the rollup
+    //    shape, assuming the branch fires.
     const session = await sessions.get('qa-session');
     const atts = await attempts.findBySession('qa-session');
     expect(atts).toHaveLength(6);
-    // Simulate `isReload === true` branch from +page.ts:25.
     if (session!.ended_at == null) {
       const rollup = {
         ended_at: Date.now(),

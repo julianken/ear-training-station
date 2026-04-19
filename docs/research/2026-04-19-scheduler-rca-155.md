@@ -44,10 +44,13 @@ reload RESUMES rather than abandons.
 ### Repro'd via refresh-abandon? **Yes, deterministic.**
 
 - `apps/ear-training-station/tests/routes/scale-degree-session-load.test.ts`
-  — simulates the `+page.ts` load-time `isReload` branch against fake-IDB.
-  Start session with `target_items: 15`. Persist 6 attempts. Simulate the
-  `isReload === true` load. Assert `completed_items === 6`, `ended_at` set.
-  Matches the probe report bit-for-bit.
+  — reference-shape check (NOT an invocation of `+page.ts:load()`).
+  Reimplements the `rollUpAbandonedSession` + `sessions.complete` shape
+  against fake-IDB with the probe's state (target_items 15, 6 attempts) and
+  asserts the resulting persisted session matches the probe report. Proves
+  the rollup shape causes the symptom, assuming the real branch fires;
+  does NOT prove the real `load()` enters that branch under a given
+  navigation. Promoting to a true integration test is filed as a follow-up.
 
 ### Minimum repro state for the real bug (refresh-abandon)
 
@@ -280,4 +283,5 @@ Option C (resume-on-reload) is blocked on #157 which is already filed.
 - `apps/ear-training-station/src/lib/exercises/scale-degree/internal/session-controller.rca-155.test.ts`
   — proof the controller advances correctly for the probe state.
 - `apps/ear-training-station/tests/routes/scale-degree-session-load.test.ts`
-  — proof the refresh-abandon path produces the observed symptom bit-for-bit.
+  — reference-shape check for the `rollUpAbandonedSession` rollup against
+  fake-IDB (does not invoke `+page.ts:load()`).
