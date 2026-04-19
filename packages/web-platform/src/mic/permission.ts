@@ -41,9 +41,12 @@ export async function requestMicStream(): Promise<MicStreamHandle> {
 
 /**
  * Query the current mic permission state without prompting.
- * Not supported on all browsers — falls back to 'unknown'.
+ * Returns 'unavailable' when the Permissions API is absent (old browsers / partial
+ * Safari support paths). Falls back to 'unknown' when the API exists but throws
+ * (e.g. 'microphone' not in the allowlist for that browser).
  */
 export async function queryMicPermission(): Promise<MicPermissionState> {
+  if (!navigator.permissions) return 'unavailable';
   try {
     const status = await navigator.permissions.query({ name: 'microphone' });
     if (status.state === 'granted') return 'granted';
