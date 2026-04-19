@@ -90,6 +90,7 @@
     <FeedbackPanel
       state={controller.state}
       showTooltip={$settings.function_tooltip}
+      advancing={controller.advancing}
       onNext={async () => {
         const c = controller;
         if (!c) return;
