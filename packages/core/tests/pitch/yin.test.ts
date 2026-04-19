@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { detectPitch } from '@/pitch/yin';
 
 const SAMPLE_RATE = 44100;
@@ -12,17 +14,15 @@ function sine(freq: number, lenSamples = BUFFER_SIZE, sr = SAMPLE_RATE): Float32
   return out;
 }
 
-/** Low-amplitude deterministic noise via a simple LCG (avoids Math.random flake in CI). */
-function noise(lenSamples = BUFFER_SIZE, amp = 0.01): Float32Array {
-  const out = new Float32Array(lenSamples);
-  // LCG params: Numerical Recipes values
-  let state = 0x12345678;
-  for (let n = 0; n < lenSamples; n++) {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-    // Map to [-1, 1] then scale by amp
-    out[n] = ((state / 0x100000000) * 2 - 1) * amp;
-  }
-  return out;
+/**
+ * Load pre-committed noise fixture (2048 float32 samples, amp ~0.01, sr=44100).
+ * Generated once from the Numerical Recipes LCG (seed 0x12345678) — see
+ * packages/core/tests/fixtures/yin-noise-44100.f32.
+ * Using a committed binary decouples the test from any specific PRNG implementation.
+ */
+function noise(): Float32Array {
+  const raw = readFileSync(join(import.meta.dirname, '../fixtures/yin-noise-44100.f32'));
+  return new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
 }
 
 describe('detectPitch (YIN)', () => {
