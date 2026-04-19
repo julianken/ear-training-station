@@ -23,6 +23,10 @@ const audioFile = fileURLToPath(new URL('./e2e/fixtures/a4-sine.wav', import.met
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
+  // offline-pwa.spec.ts requires a production build served by `vite preview` —
+  // it cannot run against the Vite dev server (SW not emitted in dev mode).
+  // Run it via `pnpm exec playwright test --config playwright.preview.config.ts`.
+  testIgnore: /offline-pwa\.spec\.ts$/,
   timeout: 60_000,
   use: {
     baseURL: 'http://localhost:5273',
