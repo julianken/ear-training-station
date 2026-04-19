@@ -13,7 +13,8 @@
  *
  * Dynamic-content masking:
  * - StreakChip reads `Date.now()` each render → data-visual-test="ignore".
- * - PitchTrace.now-indicator animates via rAF → the whole <svg> is masked.
+ * - PitchTrace.now-indicator animates via rAF → the <circle> is masked; the
+ *   target band and sung polyline remain under visual assertion.
  *
  * Each snapshot waits for `document.fonts.ready` before capturing so the first
  * paint after an icon-font/cold-cache load never wins the race.
