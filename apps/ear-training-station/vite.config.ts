@@ -75,7 +75,15 @@ export default defineConfig({
       },
       workbox: {
         // Precache all SvelteKit-generated app shell assets.
+        // `html` is intentionally omitted here — the index.html SPA shell is
+        // added to the precache via `kit.adapterFallback` + `kit.spa` below,
+        // which uses the version.json hash as the revision so the cached shell
+        // is invalidated on every new SW deployment.
         globPatterns: ['client/**/*.{js,css,ico,png,svg,webmanifest}'],
+        // navigateFallback must be '/' — the URL the server actually serves the
+        // HTML shell at. Combined with spa.fallbackMapping: '/', Workbox precaches
+        // {url: '/'} and NavigationRoute serves '/' for all offline navigations.
+        navigateFallback: '/',
         runtimeCaching: [
           {
             // Cache TensorFlow Hub model shards loaded by speech-commands at runtime.
@@ -97,6 +105,20 @@ export default defineConfig({
       kit: {
         // adapter-static uses 'static' as the assets dir by default.
         assets: 'static',
+        // Tell SvelteKitPWA that adapter-static uses index.html as the SPA
+        // fallback. Combined with spa.fallbackMapping: '/', the plugin adds
+        // {url: '/', revision: <hash-of-version.json>} to the precache manifest
+        // so the NavigationRoute can serve the HTML shell offline.
+        // The revision is re-derived from version.json on every build, ensuring
+        // stale cached shells are replaced when a new SW is deployed.
+        adapterFallback: 'index.html',
+        spa: {
+          // fallbackMapping: '/' causes the precache entry to use '/' as the
+          // URL (not 'index.html'), which the preview / production server
+          // actually serves. Without this, Workbox would try to precache
+          // /index.html which returns 404 on the static server.
+          fallbackMapping: '/',
+        },
       },
       devOptions: {
         // Enable in dev only if you want to test SW registration locally.
