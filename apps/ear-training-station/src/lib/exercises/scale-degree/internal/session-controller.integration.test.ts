@@ -46,7 +46,7 @@ async function makeRealDeps(db: DB) {
     firstItem: baseItem,
     itemsRepo,
     attemptsRepo,
-    sessionsRepo: { start: vi.fn(), complete: vi.fn(), get: vi.fn(async () => baseSession), findRecent: vi.fn(async () => []) },
+    sessionsRepo: { start: vi.fn(), advance: vi.fn(), complete: vi.fn(), get: vi.fn(async () => baseSession), findRecent: vi.fn(async () => []) },
     settingsRepo: {
       getOrDefault: vi.fn(async () => ({ function_tooltip: true, auto_advance_on_hit: true, session_length: 30, reduced_motion: 'auto' as const, onboarded: true })),
       update: vi.fn(),

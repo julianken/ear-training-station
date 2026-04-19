@@ -437,6 +437,23 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         return;
       }
 
+      // Persist mid-session progress BEFORE mutating in-memory state.
+      // Issue #157: previously we only updated this.session here and relied on
+      // the final complete() to flush counters to IDB. A crash/reload between
+      // rounds left the persisted row showing completed_items: 0 despite N
+      // attempts existing. advance() writes the counters in place so the row
+      // always reflects progress-so-far.
+      //
+      // We await the write so a repo failure surfaces before we visually
+      // advance the UI; errors bubble out of next() and are handled by the
+      // caller (the session route boundary). The in-memory session update
+      // below is kept — it's load-bearing for the UI between rounds.
+      await deps.sessionsRepo.advance(sessionRow.id, {
+        completed_items: completed,
+        pitch_pass_count: this.#pitchPasses,
+        label_pass_count: this.#labelPasses,
+      });
+
       this.currentItem = next;
       this.session = { ...sessionRow, completed_items: completed };
       this.state = { kind: 'idle' };

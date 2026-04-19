@@ -4,9 +4,15 @@ import type {
   SessionsRepo as _SessionsRepo,
   StartSessionInput,
   CompleteSessionInput,
+  AdvanceSessionInput,
 } from '@ear-training/core/repos/interfaces';
 
-export type { SessionsRepo, StartSessionInput, CompleteSessionInput } from '@ear-training/core/repos/interfaces';
+export type {
+  SessionsRepo,
+  StartSessionInput,
+  CompleteSessionInput,
+  AdvanceSessionInput,
+} from '@ear-training/core/repos/interfaces';
 
 export function createSessionsRepo(db: DB): _SessionsRepo {
   return {
@@ -23,6 +29,19 @@ export function createSessionsRepo(db: DB): _SessionsRepo {
       };
       await db.put('sessions', session);
       return session;
+    },
+
+    async advance(id: string, input: AdvanceSessionInput) {
+      // Read-then-write to preserve untouched fields (started_at, ended_at,
+      // target_items, tz_offset_ms). Mirrors complete()'s shape, but never
+      // sets ended_at — the session stays open.
+      //
+      // Silent no-op on unknown id matches complete()'s behavior; see
+      // AdvanceSessionInput doc in packages/core/src/repos/interfaces.ts.
+      const existing = await db.get('sessions', id);
+      if (!existing) return;
+      const updated: Session = { ...existing, ...input };
+      await db.put('sessions', updated);
     },
 
     async complete(id: string, input: CompleteSessionInput) {

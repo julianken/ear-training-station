@@ -36,8 +36,36 @@ export interface CompleteSessionInput {
   label_pass_count: number;
 }
 
+/**
+ * Partial progress update written between rounds. Unlike `complete`, this
+ * never sets `ended_at` — the session remains open. See issue #157: without
+ * a mid-session write, a crash/reload after N rounds shows `completed_items: 0`
+ * on the persisted row even though N attempts are in the attempts store.
+ */
+export interface AdvanceSessionInput {
+  completed_items: number;
+  pitch_pass_count: number;
+  label_pass_count: number;
+}
+
 export interface SessionsRepo {
   start(input: StartSessionInput): Promise<Session>;
+  /**
+   * Persist mid-session progress without ending the session. Idempotent:
+   * multiple calls overwrite the row in place (no new rows). Leaves
+   * `ended_at` as-is (null for an in-flight session).
+   *
+   * Implementations silently no-op when the session id is unknown — matches
+   * the same shape as `complete`. Callers that require strict semantics
+   * should `get(id)` first.
+   *
+   * `completed_items` is expected to be monotonically non-decreasing in
+   * normal use (the session controller only ever increments it). Regressions
+   * are not rejected: the repo is a dumb writer, and a spurious decrease
+   * would indicate a controller bug that should be caught there, not masked
+   * here. A controller-level test guards the increment path.
+   */
+  advance(id: string, input: AdvanceSessionInput): Promise<void>;
   complete(id: string, input: CompleteSessionInput): Promise<void>;
   get(id: string): Promise<Session | undefined>;
   findRecent(limit: number): Promise<Session[]>;
