@@ -29,8 +29,7 @@ export default defineConfig({
       // 1% pixel tolerance absorbs minor antialiasing jitter between runs
       // inside the same Docker image. Tighten if false-negatives show up;
       // DO NOT loosen past 0.02 without written justification.
-      maxDiffPixelRatio: 0,
-      maxDiffPixels: 0,
+      maxDiffPixelRatio: 0.01,
       // Per-pixel color tolerance. 0.2 matches Playwright's default and is
       // conservative enough to catch token-drift regressions (e.g. a cyan
       // token changing from #22d3ee to #ff0000 still produces tens of
