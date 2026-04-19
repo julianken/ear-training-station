@@ -72,7 +72,13 @@
   const nowX = $derived(timeToX(nowMs));
 </script>
 
-<svg class="pitch-trace" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" height={HEIGHT}>
+<svg
+  class="pitch-trace"
+  viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+  width="100%"
+  height={HEIGHT}
+  data-visual-test="ignore"
+>
   <rect class="target-band" x="0" y={bandY} width={WIDTH} height={bandH} />
   <polyline class="sung" {points} fill="none" />
   <circle class="now-indicator" cx={nowX} cy={degreeToY(targetDegree)} r="4" />
