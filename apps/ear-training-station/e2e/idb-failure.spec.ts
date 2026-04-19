@@ -41,17 +41,13 @@ import type { Item } from '@ear-training/core/types/domain';
 
 // ── Case A: IDB open() throws (Safari private mode) ──────────────────────────
 //
-// BUG: the +layout.ts load() calls getDeps() → openEarTrainingDB() →
-// indexedDB.open(). When open() throws synchronously, SvelteKit's client-side
-// router receives an unhandled rejection and leaves the page blank instead of
-// rendering the error boundary or DegradationBanner. The onMount
-// handleHydrationError path is never reached.
-//
-// This test is marked fixme to document the expected behavior; enable it when
-// the load() function is updated to catch IDB failures and set persistenceFailing
-// (or redirect to the error page) rather than letting the rejection propagate.
+// The +layout.ts load() wraps getDeps()/settings.getOrDefault() in a try/catch.
+// When indexedDB.open throws synchronously (Safari private mode / Firefox strict
+// privacy), the catch handler calls handleHydrationError() to flip
+// degradationState.persistenceFailing and returns DEFAULT_SETTINGS so the shell
+// still renders. DegradationBanner surfaces the "Saving locally failed" message.
 
-test.fixme(
+test(
   'Case A: indexedDB.open throws — DegradationBanner shows "Saving locally failed"',
   async ({ page }) => {
     // Stub BEFORE any page script runs. Safari private mode (and historical
@@ -73,7 +69,10 @@ test.fixme(
     ).toBeVisible({ timeout: 10_000 });
 
     // The shell header must still render (not a blank page / error boundary).
-    await expect(page.getByText(/ear training/i)).toBeVisible();
+    // Target the logo link specifically to avoid matching the onboarding
+    // headline "Ear training that uses your voice" (the redirect to
+    // /onboarding fires because DEFAULT_SETTINGS.onboarded is false).
+    await expect(page.getByRole('link', { name: 'Ear Training' })).toBeVisible();
   },
 );
 
