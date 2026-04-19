@@ -36,12 +36,51 @@ jobs:
 
       - name: Run e2e tests (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
         working-directory: apps/ear-training-station
-        run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        # offline-pwa.spec.ts requires a production build (vite preview) and runs in
+        # the separate e2e-pwa job below. testIgnore in playwright.config.ts also
+        # excludes it, but --grep-invert adds a safety net for any config drift.
+        run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --grep-invert offline-pwa
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-shard-${{ matrix.shardIndex }}
+          path: apps/ear-training-station/test-results/
+          retention-days: 7
+
+  # Separate non-sharded job for offline/PWA tests — requires a production build.
+  # Runs against `vite preview` so the service worker is active.
+  # See apps/ear-training-station/playwright.preview.config.ts for the Playwright config.
+  e2e-pwa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter ear-training-station exec playwright install chromium --with-deps
+
+      - name: Build production app (required for service worker)
+        run: pnpm run build
+
+      - name: Run offline/PWA e2e tests
+        working-directory: apps/ear-training-station
+        run: pnpm exec playwright test --config playwright.preview.config.ts
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-pwa
           path: apps/ear-training-station/test-results/
           retention-days: 7
