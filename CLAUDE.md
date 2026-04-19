@@ -30,13 +30,13 @@ Open it after `pnpm run dev`, click Play Round / Start Pitch Detection / Start D
 | **Plan B · Audio I/O** | ✅ complete | All 12 tasks + 2 cleanup PRs. Pitch detection, KWS, playback, mic permission |
 | **Plan C0 · Integration Seam** | ✅ complete | 13 PRs (PRs #16–#28). pnpm monorepo, round lifecycle reducer, adapters, variability pickers, analytics rollups, design tokens |
 | **Pre-C1 fixes** | ✅ landed | PR #30. KWS `activeThresholds` stale-on-failure bug, `Degree` type leak, settings-repo merge logic |
-| **GitHub Actions CI** | ✅ complete | PRs #31–#35. 6 workflows: CI, Lint, E2E (4-shard), Bundle Size, CodeQL + Dependabot |
+| **GitHub Actions CI** | ✅ complete | PRs #31–#35. 5 workflows: CI, Lint, E2E (4-shard), Bundle Size, CodeQL (Dependabot is config, not a workflow) |
 | **Plan C1 · UI + Integration** | ✅ complete | 4 sub-plans (C1.1–C1.4). SvelteKit shell, session screen, dashboard, onboarding, PWA/service worker, a11y smoke tests |
-| **Plan C2 · Correctness, Stability, Documentation** | 🔄 in progress | T2–T13 merged (PRs #105–#136). AudioContext leak fix, error boundary, lint hardening, Settings wiring, IDB integration test, DST streak fix, Tone.Offline replay |
+| **Plan C2 · Correctness, Stability, Documentation** | ✅ complete | T2–T15 merged (PRs #105–#141). AudioContext leak fix, error boundary, lint hardening, Settings wiring, IDB integration test, DST streak fix, Tone.Offline replay, CLAUDE.md rewrite, README |
 
 **Tests:** 361 vitest unit tests (55 files) + Playwright e2e suite, all green. `pnpm run build` produces a clean prod bundle.
 
-**Head of `main`:** `fbc5a41` as of 2026-04-18.
+**Head of `main`:** `6645b69` as of 2026-04-19.
 
 **Plan C0 run stats:** 4 real bugs caught by julianken-bot reviews — octave-invariant cents_off mismatch, UTC day boundaries in streak calculation, LOADING-state threshold guard gap in KWS, Degree return type narrowing for digitLabelToNumber.
 
@@ -77,7 +77,7 @@ Cross-package imports use package names: `import { Key } from '@ear-training/cor
 - `pitch/degree-mapping` — `mapHzToDegree(hz, key): DegreeMapping | null`, `IN_KEY_CENTS` (50)
 
 **Round lifecycle (Plan C0, `@ear-training/core`):**
-- `round/events` — `RoundEvent` discriminated union (7 variants, all with `at_ms: number`)
+- `round/events` — `RoundEvent` discriminated union (8 variants, all with `at_ms: number`)
 - `round/grade-pitch` — `gradePitch(frames, item, minConfidence): PitchGrade`, `PitchObservation`
 - `round/state` — `RoundState` (5 variants), `roundReducer(state, event) → state'`
 - `variability/pickers` — `pickTimbre(rng, history, settings)`, `pickRegister(...)`, `TimbreId`, `VariabilityHistory`, `VariabilitySettings`
