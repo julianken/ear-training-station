@@ -1,0 +1,58 @@
+# .github/workflows/visual.yml
+#
+# Visual regression testing via Playwright `toHaveScreenshot()`. Runs inside
+# the official Playwright Docker image so font rendering matches the image
+# used to regenerate baselines locally (`docker run mcr.microsoft.com/...`).
+# Baselines committed under apps/ear-training-station/e2e/visual.spec.ts-snapshots/.
+#
+# On failure, `apps/ear-training-station/test-results/` (containing *-actual.png,
+# *-expected.png, *-diff.png triplets) is uploaded as the `visual-diffs`
+# artifact for side-by-side review.
+#
+# IMPORTANT: the image tag below MUST match the `@playwright/test` version in
+# `apps/ear-training-station/package.json`. Mismatches cause antialiasing
+# noise that flakes every run. Version bump flow: (1) bump `@playwright/test`,
+# (2) update this tag, (3) regenerate baselines inside the new image, (4) commit.
+name: Visual
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, ready_for_review]
+
+concurrency:
+  group: visual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-jammy
+    steps:
+      - uses: actions/checkout@v6
+
+      # Playwright image ships Node 22 but not pnpm; corepack enable unlocks
+      # the pinned version from package.json's packageManager field.
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run visual regression spec
+        working-directory: apps/ear-training-station
+        run: pnpm exec playwright test --config playwright.visual.config.ts
+
+      - name: Upload visual diffs on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-diffs
+          path: apps/ear-training-station/test-results/
+          retention-days: 14
