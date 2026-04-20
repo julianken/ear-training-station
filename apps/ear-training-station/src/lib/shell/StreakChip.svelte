@@ -13,7 +13,7 @@
   );
 </script>
 
-<span class="streak-chip" aria-label="Current streak">
+<span class="streak-chip" aria-label="Current streak" data-visual-test="ignore">
   <span class="icon" aria-hidden="true">◆</span>
   <span class="count">{$streak}</span>
   <span class="label">day streak</span>

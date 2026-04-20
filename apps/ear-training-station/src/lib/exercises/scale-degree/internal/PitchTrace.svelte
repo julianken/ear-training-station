@@ -75,7 +75,13 @@
 <svg class="pitch-trace" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" height={HEIGHT}>
   <rect class="target-band" x="0" y={bandY} width={WIDTH} height={bandH} />
   <polyline class="sung" {points} fill="none" />
-  <circle class="now-indicator" cx={nowX} cy={degreeToY(targetDegree)} r="4" />
+  <circle
+    class="now-indicator"
+    cx={nowX}
+    cy={degreeToY(targetDegree)}
+    r="4"
+    data-visual-test="ignore"
+  />
 </svg>
 
 <style>
