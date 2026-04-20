@@ -13,6 +13,7 @@ import { gradeListeningState } from '@ear-training/core/round/grade-listening';
 import { pickTimbre, pickRegister, type VariabilityHistory, type TimbreId } from '@ear-training/core/variability/pickers';
 import { availableRegisters } from '@ear-training/core/scheduler/register-gating';
 import { selectNextItem } from '@ear-training/core/scheduler/selection';
+import type { SelectNextItemNullDiag } from '@ear-training/core/scheduler/selection';
 import type { RoundHistoryEntry } from '@ear-training/core/scheduler/interleaving';
 import { buildAttemptPersistence } from '@ear-training/core/round/persistence';
 import { nextBoxOnPass, nextBoxOnMiss } from '@ear-training/core/srs/leitner';
@@ -38,6 +39,9 @@ export interface SessionController {
   readonly currentItem: Item | null;
   readonly capturedAudio: AudioBuffer | null;
   readonly targetAudio: AudioBuffer | null;
+  /** True while `next()` is in flight — used to disable the Next-round
+   *  button and squelch double-click re-entry during the `listAll()` await. */
+  readonly advancing: boolean;
   startRound(): Promise<void>;
   cancelRound(): void;
   next(): Promise<void>;
@@ -91,6 +95,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     currentItem = $state<Item | null>(deps.firstItem);
     capturedAudio = $state<AudioBuffer | null>(null);
     targetAudio = $state<AudioBuffer | null>(null);
+    advancing = $state<boolean>(false);
 
     #playHandle: PlayRoundHandle | null = null;
     #pitchHandle: PitchDetectorHandle | null = null;
@@ -392,7 +397,23 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     async next(): Promise<void> {
       if (this.#disposed) return;
       if (this.state.kind !== 'graded') return; // guard: only callable post-grade
+      // Double-click race guard. `next()` awaits `itemsRepo.listAll()` (and
+      // potentially `sessionsRepo.complete()`), so a second click while the
+      // first call is mid-await can otherwise cause two dispatches to race
+      // through to `selectNextItem` or to `sessions.complete`. The first
+      // caller sets #advancing; concurrent re-entry early-returns without
+      // mutating controller state. Reset in `finally` so an exception in
+      // the repo layer still releases the latch.
+      if (this.advancing) return;
+      this.advancing = true;
+      try {
+        await this.#nextInner();
+      } finally {
+        this.advancing = false;
+      }
+    }
 
+    async #nextInner(): Promise<void> {
       // Reset mic-check counter so the new round starts clean.
       consecutiveNullCount.set(0);
 
@@ -422,7 +443,26 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       // the mastered-warmup pool is visible too.
       const now = Date.now();
       const allItemsForScheduler = await deps.itemsRepo.listAll();
-      const next = selectNextItem(allItemsForScheduler, this.#roundHistory, now, this.#rng);
+      // Instrumentation hook for #155: log the full scheduler diagnostic on any
+      // null-return so the next organic hit produces a reproducible blob. The
+      // logger itself must never escape — a thrown console.warn impl (edge-case
+      // patched console in a browser extension) would otherwise break the
+      // scheduler call.
+      const logNull = (diag: SelectNextItemNullDiag): void => {
+        try {
+          console.warn('[scheduler-null]', {
+            sessionId: sessionRow.id,
+            completed,
+            target: sessionRow.target_items,
+            roundHistoryLen: this.#roundHistory.length,
+            itemsPassedCount: allItemsForScheduler.length,
+            diag,
+          });
+        } catch {
+          /* no-op: instrumentation must not affect runtime */
+        }
+      };
+      const next = selectNextItem(allItemsForScheduler, this.#roundHistory, now, this.#rng, logNull);
       if (next == null) {
         // Unusual: target_items says more to go but the queue is empty. Persist completion anyway.
         await deps.sessionsRepo.complete(sessionRow.id, {
