@@ -26,7 +26,13 @@ export default defineConfig({
   // offline-pwa.spec.ts requires a production build served by `vite preview` —
   // it cannot run against the Vite dev server (SW not emitted in dev mode).
   // Run it via `pnpm exec playwright test --config playwright.preview.config.ts`.
-  testIgnore: /offline-pwa\.spec\.ts$/,
+  //
+  // visual.spec.ts is a separate visual-regression suite with its own config
+  // (`playwright.visual.config.ts`) — excluded here so the default `pnpm
+  // exec playwright test` and sharded e2e CI runs skip it. Baselines live
+  // under `e2e/visual.spec.ts-snapshots/` and must be regenerated inside
+  // the Playwright Docker image to match CI font rendering.
+  testIgnore: [/offline-pwa\.spec\.ts$/, /visual\.spec\.ts$/],
   timeout: 60_000,
   use: {
     baseURL: 'http://localhost:5273',
