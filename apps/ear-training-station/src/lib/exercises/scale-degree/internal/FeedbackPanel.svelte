@@ -8,10 +8,14 @@
     state,
     showTooltip,
     onNext,
+    advancing = false,
   }: {
     state: Extract<RoundState, { kind: 'graded' }>;
     showTooltip: boolean;
     onNext?: () => void;
+    /** When true, the Next-round button is disabled to prevent double-dispatch
+     *  while the controller's `next()` is mid-await on IDB. */
+    advancing?: boolean;
   } = $props();
 
   const targetDegree = $derived(state.item.degree);
@@ -71,7 +75,7 @@
   {/if}
 
   {#if onNext}
-    <button type="button" class="next-btn" onclick={() => onNext()}>Next round</button>
+    <button type="button" class="next-btn" disabled={advancing} onclick={() => onNext()}>Next round</button>
   {/if}
 </section>
 
@@ -112,5 +116,9 @@
     color: var(--cyan);
     font-size: 12px;
     cursor: pointer;
+  }
+  .next-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>
